@@ -15,10 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-
+from dashboard.views import EmailNamespaceListView
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/', include('rest_auth.urls')),
     path('auth/registration/', include('rest_auth.registration.urls')),
+    path('auth/', include('rest_auth.urls')),
     path('accounts/', include('allauth.urls')),
+    path('dashboard/', include('dashboard.urls')),
+    path('namespaces/', EmailNamespaceListView.as_view())
 ]

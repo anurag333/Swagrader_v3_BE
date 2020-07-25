@@ -39,10 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'authentication',
+    'dashboard',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
@@ -147,6 +147,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 SITE_ID = 1
 AUTH_USER_MODEL = 'authentication.SwagraderUser'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_ADAPTER = 'authentication.adapter.SwagraderAdapter'
 
 AUTHENTICATION_BACKENDS = [
     # Needed to login by username in Django admin, regardless of `allauth`
