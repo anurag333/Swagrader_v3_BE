@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from .managers import SwagraderUserManager
 from rest_framework.response import Response
+from allauth.account.models import EmailAddress
 
 class EmailNamespace(models.Model):
     namespace = models.CharField(max_length=30)
@@ -31,8 +32,11 @@ class SwagraderUser(AbstractUser):
                 ns = EmailNamespace.objects.create(namespace=namespace)
         super(SwagraderUser, self).save(*args, **kwargs)
 
+        eaddr = EmailAddress(email=self.email, user=self, verified=True, primary=True)
+        eaddr.save()
+
     def __str__(self):
         if self.first_name or self.last_name:
-            return '{rn}: {fn} {ln}'.format(rn=self.institute_id, fn=first_name, ln=last_name)
+            return '{rn}: {fn} {ln}'.format(rn=self.institute_id, fn=self.first_name, ln=self.last_name)
     
         return self.email

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from authentication.models import EmailNamespace
+from authentication.models import EmailNamespace, SwagraderUser
 from .models import Course
 
 class EmailNamespaceSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class CourseSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
     class Meta:
         model = Course
-        fields = ['instructors', 'course_id', 'course_number', 'course_title', 'term', 'year', 'entry_restricted', 'role']
+        fields = ['instructors', 'course_id', 'course_number', 'course_title', 'term', 'year', 'entry_restricted', 'roles']
 
     def get_roles(self, course):
         current_user = self.context.get('current_user')
@@ -26,6 +26,13 @@ class CourseSerializer(serializers.ModelSerializer):
             roles.append('ta')
         return roles
 
+class SingleUserSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length = 30, required=True)
+    email = serializers.EmailField(required=True)
+    institute_id = serializers.IntegerField(required=True)
+    role = serializers.ChoiceField(choices=(('s', 'Student'), ('t', 'Teaching Assistant'), ('i', 'Instructor')), allow_blank=False)
+    notify = serializers.BooleanField(default=True)
+    
 # class AssignmentSerializer(serializers.ModelSerializer):
 #     course = serializers.StringRelatedField(allow_null=False)
 #     status = serializers.SerializerMethodField(read_only=True)

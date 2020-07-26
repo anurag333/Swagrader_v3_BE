@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from dashboard.views import EmailNamespaceListView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/registration/', include('rest_auth.registration.urls')),

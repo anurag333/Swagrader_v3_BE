@@ -8,8 +8,8 @@ class Course(models.Model):
     """
     course_id           = models.UUIDField(default = uuid.uuid4, editable = False, primary_key = True)
     instructors         = models.ManyToManyField(settings.AUTH_USER_MODEL, 'instructed_courses')
-    students            = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='enrolled_courses')
-    teaching_assisant   = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name = 'assisted_courses')
+    students            = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='enrolled_courses', blank=True)
+    teaching_assistants   = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name = 'assisted_courses', blank=True)
     course_number       = models.CharField(max_length = 6)
     course_title        = models.CharField(max_length = 40)
     term                = models.CharField(max_length = 6, choices = (('Summer','Summer'),('Winter','Winter'),('Spring','Spring'),('Fall','Fall')))
