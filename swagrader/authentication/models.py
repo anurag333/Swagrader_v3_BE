@@ -14,7 +14,7 @@ class EmailNamespace(models.Model):
 class SwagraderUser(AbstractUser):
     username = None
     email = models.EmailField(('email address'), unique=True)
-    institute_id = models.BigIntegerField(null=True)
+    institute_id = models.BigIntegerField(null=True, blank=True)
     global_instructor_privilege = models.BooleanField(default=False)
     global_ta_privilege = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'

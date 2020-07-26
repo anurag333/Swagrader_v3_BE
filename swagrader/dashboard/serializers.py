@@ -1,12 +1,11 @@
 from rest_framework import serializers
 from authentication.models import EmailNamespace, SwagraderUser
-from .models import Course
+from .models import *
 
 class EmailNamespaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailNamespace
         fields = ['namespace']
-
 
 class CourseSerializer(serializers.ModelSerializer):
     instructors = serializers.StringRelatedField(many=True)
@@ -32,6 +31,27 @@ class SingleUserSerializer(serializers.Serializer):
     institute_id = serializers.IntegerField(required=True)
     role = serializers.ChoiceField(choices=(('s', 'Student'), ('t', 'Teaching Assistant'), ('i', 'Instructor')), allow_blank=False)
     notify = serializers.BooleanField(default=True)
+
+class CourseMetadataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CourseMetadata
+        fields = ['description', 'grading_policy', 'peergrading_policy', 'regrading_policy']
+
+class CourseRosterSerializer(serializers.ModelSerializer):
+    # course = serializers.StringRelatedField()
+    user = serializers.StringRelatedField()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Roster
+        fields = ['id', 'user', 'role']
+
+    def get_role(self, roster):
+        role = []
+        if roster.user in roster.course.instructors.all():  role.append('instructor')
+        if roster.user in roster.course.teaching_assistants.all(): role.append('ta')
+        if roster.user in roster.course.students.all(): role.append('student') 
+        return role
     
 # class AssignmentSerializer(serializers.ModelSerializer):
 #     course = serializers.StringRelatedField(allow_null=False)
