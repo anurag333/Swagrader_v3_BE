@@ -4,3 +4,5 @@ from .models import *
 admin.site.register(Course)
 admin.site.register(CourseMetadata)
 admin.site.register(Roster)
+admin.site.register(Assignment)
+admin.site.register(AssignmentGradingProfile)

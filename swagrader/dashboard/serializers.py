@@ -2,6 +2,64 @@ from rest_framework import serializers
 from authentication.models import EmailNamespace, SwagraderUser
 from .models import *
 
+class AssignmentCreateSerializer(serializers.ModelSerializer):
+    course = serializers.StringRelatedField(allow_null=False)
+    publish_date = serializers.DateTimeField(required=True)
+    submission_deadline = serializers.DateTimeField(required=True)
+    late_sub_deadline = serializers.DateTimeField(allow_null=True, required=False)
+    allow_late_subs = serializers.BooleanField(default=False)
+
+    class Meta:
+        model = Assignment
+        fields = ['course', 'title', 'pdf', 'publish_date', 'submission_deadline', 'allow_late_subs', 'late_sub_deadline']
+    
+    def validate_title(self, value):
+        if ' ' in value.lower(): raise serializers.ValidationError("Title should not have spaces.")
+        return value
+
+    def validate(self, data):
+        if data['submission_deadline'] <= data['publish_date']:
+            raise serializers.ValidationError("Submission deadline should not be earlier than publishing date.")
+
+        if data['allow_late_subs']:
+            print(data['late_sub_deadline'], " lo bhai dekh lo kya chal raha hai yaha pe")
+            if data['late_sub_deadline'] != None:
+                if data['late_sub_deadline'] <= self.submission_deadline:
+                    raise serializers.ValidationError("Late submission deadline should not be earlier than the submission date.")
+                return data
+
+            raise serializers.ValidationError("Set the late submission deadline for the assignment or uncheck the allow late sub flag.")
+        
+        return data
+
+
+class CourseDetailSerializer(serializers.ModelSerializer):
+    instructors = serializers.StringRelatedField(many=True, allow_null=False)
+    authored_assignments = AssignmentCreateSerializer(many=True, read_only=True)
+    ta_count = serializers.SerializerMethodField()
+    st_count = serializers.SerializerMethodField()
+    course_avg = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Course
+        fields = ['instructors', 'course_id', 'course_number', 'course_title', 'term', 'year', 'entry_restricted', 'st_count', 'ta_count', 'course_avg', 'authored_assignments']
+
+    def get_ta_count(self, course):
+        return course.teaching_assistants.all().count()
+    
+    def get_st_count(self, course):
+        return course.students.all().count()
+    
+    def get_course_avg(self, course):
+        graded_assign = course.authored_assignments.filter(assignment_grading_profile__graded=1)
+        if graded_assign.count() != 0:
+            tot = 0
+            for assign in graded_assign:
+                tot += assign.average
+            return tot/graded_assign.count()
+        return "Course has no assignment graded till now."
+
+
 class EmailNamespaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailNamespace

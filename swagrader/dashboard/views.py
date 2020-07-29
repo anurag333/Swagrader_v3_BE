@@ -197,6 +197,22 @@ class RosterUpdateView(views.APIView):
 
         except Course.DoesNotExist or Roster.DoesNotExist:
             return Response({'message': 'The roster or the course does not exist.'}, status=404)
+
+class CourseDetailView(generics.RetrieveAPIView):
+    queryset = Course.objects.all()
+    serializer_class = CourseDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsInstructor]
+    lookup_field = 'course_id'
+
+class AssignmentCreateView(generics.CreateAPIView):
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentCreateSerializer
+    permission_classes = [permissions.IsAuthenticated, IsInstructorForMetadata]
+    lookup_field = 'course_id'
+
+    def perform_create(self, serializer):
+        curr_course = Course.objects.get(course_id=self.kwargs['course_id'])
+        serializer.save(course=curr_course)
         
 # class UpdateRosterCsv(generics.UpdateAPIView):
 #     permission_classes = [permissions.IsAuthenticated, IsInstructor]
