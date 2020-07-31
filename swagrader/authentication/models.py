@@ -32,8 +32,10 @@ class SwagraderUser(AbstractUser):
                 ns = EmailNamespace.objects.create(namespace=namespace)
         super(SwagraderUser, self).save(*args, **kwargs)
 
-        eaddr = EmailAddress(email=self.email, user=self, verified=True, primary=True)
-        eaddr.save()
+        if self.is_superuser:
+            if not EmailAddress.objects.filter(email=self.email).exists():
+                eaddr = EmailAddress(email=self.email, user=self, verified=True, primary=True)
+                eaddr.save()
 
     def __str__(self):
         if self.first_name or self.last_name:

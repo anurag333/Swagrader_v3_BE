@@ -1,12 +1,19 @@
 from rest_framework.permissions import BasePermission
 from .models import Course
-
+from itertools import chain
 class IsGlobalInstructor(BasePermission):
     """
     Permission to allow only instructor to have the view permissions (Course)
     """
     def has_permission(self, request, view):
         return request.user.global_instructor_privilege
+
+class IsAssociatedToTheCourse(BasePermission):
+    """
+    Permission to allow only TA to have the obj permissions (Course)
+    """ 
+    def has_object_permission(self, request, view, obj):
+        return request.user in chain(obj.instructors.all(), obj.teaching_assistants.all(), obj.students.all())
 
 class IsGlobalTA(BasePermission):
     """
