@@ -16,10 +16,12 @@ urlpatterns = [
     path('courses/<uuid:course_id>/roster/<int:pk>/update', RosterUpdateView.as_view()),
     path('courses/create', CourseCreateView.as_view()),
     path('courses/<uuid:course_id>/detail-instructor', CourseInstructorDetailUpdateDestroyView.as_view()),
-    path('courses/<uuid:course_id>/detail', CourseDetailView.as_view()),
+    path('courses/<uuid:course_id>/detail-student', CourseDetailStudentView.as_view()),
     path('courses/<uuid:course_id>/assignments', AssignmentListView.as_view()),
     path('courses/<uuid:course_id>/assignments/create', AssignmentCreateView.as_view()),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>', AssignmentDetailUpdateDestroyView.as_view()),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/outline', assignment_outline_detail),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/publish', assignment_publish),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/questions', QuestionListView.as_view()),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/submit', submit_assignment),
 ]

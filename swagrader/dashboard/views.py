@@ -21,12 +21,6 @@ class EmailNamespaceListView(generics.ListAPIView):
     serializer_class = EmailNamespaceSerializer
     permission_classes = [permissions.AllowAny]
 
-class CourseDetailView(generics.RetrieveAPIView):
-    serializer_class = CourseSerializer
-    queryset = Course.objects.all()
-    permission_classes = [permissions.IsAuthenticated, IsAssociatedToTheCourse]
-    lookup_field = 'course_id'
-
 class CourseListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
     # authentication_classes = [authentication.TokenAuthentication]

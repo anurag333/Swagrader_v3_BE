@@ -43,26 +43,21 @@ class Roster(models.Model):
 
 class Assignment(models.Model):
     
-    def assignment_path(instance, filename):
+    def assignment_path(self, filename):
         # file will be uploaded to MEDIA_ROOT/course_<course_number>/<assignment_title>/Question_paper/<filename>
-        title = ""
-        for c in instance.title:
-            if c == " ":
-                title += "_"
-            else:
-                title += c
-        return 'course_{0}-{3}/{1}/Question_paper/{2}'.format(instance.course.course_number, title, filename, str(instance.course.course_id)[0:6])
+        title = self.title.replace(' ', '_')
+        return 'course_{0}-{3}/{1}/Question_paper/{2}'.format(self.course.course_number, title, filename, str(self.course.course_id)[0:6])
     
-    def answer_path(instance, filename):
+    def answer_path(self, filename):
         # file will be uploaded to MEDIA_ROOT/course_<course_number>/<assignment_title>/Answer_Key/<filename>
         title = ""
-        for c in instance.title:
+        for c in self.title:
             if c == " ":
                 title += "_"
             else:
                 title += c
 
-        return 'course_{0}-{3}/{1}/Answer_Key/{2}'.format(instance.course.course_number, title, filename, str(instance.course.course_id)[0:6])
+        return 'course_{0}-{3}/{1}/Answer_Key/{2}'.format(self.course.course_number, title, filename, str(self.course.course_id)[0:6])
     
     assign_id                           = models.BigAutoField(primary_key=True)
     pdf                                 = models.FileField(upload_to = assignment_path, validators=[FileExtensionValidator(allowed_extensions=['pdf'])]) 
@@ -146,3 +141,23 @@ class SubQuestion(models.Model):
 
     class Meta:
         ordering = ['sno']
+
+class AssignmentSubmission(models.Model):
+    sub_id      = models.BigAutoField(primary_key=True)
+    author      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='submissions')
+    assignment  = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='assign_submissions')
+
+    def __str__(self):
+        return f'{self.sub_id}-{self.assignment.title}: {self.author.institute_id} Submission'
+
+class QuestionSubmission(models.Model):
+    def qsub_path(self, filename):
+        # file will be uploaded to MEDIA_ROOT/course_<course_number>/<assignment_title>/Submissions/<question_sno>/<filename>
+        assign  = self.submission.assignment
+        title   = assign.title.replace(' ', '_')
+        return 'course_{0}-{3}/{1}/Submissions/{4}/{2}'.format(assign.course.course_number, title, filename, str(assign.course.course_id)[0:6], str(self.question.sno))
+
+    qsub_id     = models.BigAutoField(primary_key=True)
+    submission  = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE, related_name='submissions')
+    question    = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='qsubmissions')
+    pdf         = models.FileField(upload_to = qsub_path, validators=[FileExtensionValidator(allowed_extensions=['pdf'])])

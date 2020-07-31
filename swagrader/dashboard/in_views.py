@@ -58,6 +58,7 @@ def assignment_outline_detail(request, course_id, assign_id):
         return Response(serializer.data)
     
     if request.method == 'POST':
+        print(request.data)
         try:
             curr_course = Course.objects.get(course_id=course_id)
             curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)

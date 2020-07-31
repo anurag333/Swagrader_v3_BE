@@ -8,6 +8,10 @@ class IsGlobalInstructor(BasePermission):
     def has_permission(self, request, view):
         return request.user.global_instructor_privilege
 
+class IsStudent(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user in obj.students.all()
+
 class IsAssociatedToTheCourse(BasePermission):
     """
     Permission to allow only TA to have the obj permissions (Course)

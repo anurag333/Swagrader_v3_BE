@@ -147,3 +147,9 @@ class QuestionSerializer(WritableNestedModelSerializer):
     class Meta:
         model = Question
         fields = ['parent_assign', 'sno', 'title', 'marks', 'sub_questions']
+
+class QuestionListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Question
+        fields = ['ques_id', 'sno', 'title', 'marks']
