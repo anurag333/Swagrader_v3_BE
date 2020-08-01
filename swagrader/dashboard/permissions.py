@@ -35,7 +35,6 @@ class IsInstructor(BasePermission):
         return request.user in obj.instructors.all()
     
     def has_permission(self, request, view):
-        # print(request.META, " meta for the req")
         course_id = view.kwargs.get('course_id', None)
         if course_id:
             course = Course.objects.filter(course_id=course_id)
@@ -55,7 +54,6 @@ class IsInstructorForMetadata(BasePermission):
         return request.user in obj.course.instructors.all()
     
     def has_permission(self, request, view):
-        # print(request.META, " meta for the req")
         course_id = view.kwargs.get('course_id', None)
         if course_id:
             course = Course.objects.filter(course_id=course_id)

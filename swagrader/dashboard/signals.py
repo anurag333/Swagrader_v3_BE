@@ -6,12 +6,10 @@ from .models import *
 @receiver(post_save, sender=Course)
 def create_course_metadata(sender, instance, created, **kwargs):
     if created:
-        print('got the signal, creating the metadata for the course ', instance)
         CourseMetadata.objects.create(course=instance)
 
 @receiver(post_save, sender=Course)
 def save_course_metadata(sender, instance, **kwargs):
-    print('saving the metadata also')
     try:
         instance.course_metadata.save()
     except:
@@ -20,12 +18,10 @@ def save_course_metadata(sender, instance, **kwargs):
 @receiver(post_save, sender=Assignment)
 def create_assign_grading_profile(sender, instance, created, **kwargs):
     if created:
-        print('got the signal, creating the profile for the assign ', instance)
         AssignmentGradingProfile.objects.create(assignment=instance)
 
 @receiver(post_save, sender=Assignment)
 def save_assign_grading_profile(sender, instance, **kwargs):
-    print('saving the assign profile also')
     try:
         instance.assignment_grading_profile.save()
     except:
@@ -38,7 +34,6 @@ def create_assign_peergrading_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Assignment)
 def save_assign_peergrading_profile(sender, instance, **kwargs):
-    print('saving the assign profile also')
     try:
         instance.assignment_peergrading_profile.save()
     except:

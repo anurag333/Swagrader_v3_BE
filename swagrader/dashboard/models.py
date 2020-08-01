@@ -69,6 +69,8 @@ class Assignment(models.Model):
     submission_deadline                 = models.DateTimeField()
     allow_late_subs                     = models.BooleanField()
     late_sub_deadline                   = models.DateTimeField(null=True)
+    # weightage in the course
+    # penalty for late subs
     published_for_subs                  = models.BooleanField(default=False)
     average                             = models.FloatField(default=0)
     regrading_requests                  = models.BooleanField(default = True)
@@ -92,15 +94,13 @@ class AssignmentGradingProfile(models.Model):
     grading_deadline                    = models.DateField(null=True, blank=True)
     regrading_deadline                  = models.DateField(null=True, blank=True)
     current_status                      = models.CharField(max_length=15, choices=(
-                                            ('outline', 'Set outline'),
-                                            ('publish', 'Publish assignment'),
                                             ('set rubric', 'Set global rubrics'),
-                                            ('select method', 'Select grading methodology'),
                                             ('stage', 'Stage grading'),
                                             ('start', 'Start grading'),
                                             ('end', 'End grading')), default='outline')
 
 class AssignmentPeergradingProfile(models.Model):
+    # alpha
     assignment              = models.OneToOneField(Assignment, on_delete=models.CASCADE, related_name="assignment_peergrading_profile")
     param_mu                = models.FloatField(help_text='Parameter to be set as per the TRUPEQA algorithm', default=16.234)
     param_gm                = models.FloatField(help_text='Parameter to be set as per the TRUPEQA algorithm', default=1.234)

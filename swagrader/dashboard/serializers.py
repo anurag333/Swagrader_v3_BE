@@ -41,7 +41,7 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
 
 class CourseDetailInstructorSerializer(serializers.ModelSerializer):
     instructors = serializers.StringRelatedField(many=True, allow_null=False)
-    authored_assignments = AssignmentListCreateSerializer(many=True)
+    authored_assignments = AssignmentListCreateSerializer(many=True, read_only=True)
     ta_count = serializers.SerializerMethodField()
     st_count = serializers.SerializerMethodField()
     course_avg = serializers.SerializerMethodField()

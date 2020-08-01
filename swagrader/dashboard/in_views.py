@@ -16,9 +16,35 @@ import string
 from datetime import datetime
 from django.utils import timezone
 
-@api_view(['GET'])
+@api_view(['POST'])
+def close_submissions(request, course_id, assign_id):
+    if request.method == 'POST':
+        try:
+            curr_course = Course.objects.get(course_id=course_id)
+            curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
+        except Course.DoesNotExist or Assignment.DoesNotExist:
+            raise Http404
+
+        if request.user not in curr_course.instructors.all():
+            return Response({'message': 'You are not allowed for this operation.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not curr_assign.current_status == 'published':
+            return Response({'message': 'This operation is only allowed for published assignments.'}, status=status.HTTP_403_FORBIDDEN)
+
+        
+        if curr_assign.publish_date <= timezone.now() < curr_assign.submission_deadline:
+            curr_assign.current_status = 'published'
+            curr_assign.published_for_subs = False
+            curr_assign.save()
+            print(curr_assign.status)
+            return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return Response({'message': 'You cannot close the assignment since it was closed already.'}, status=status.HTTP_403_FORBIDDEN)
+
+@api_view(['POST'])
 def assignment_publish(request, course_id, assign_id):
-    if request.method == 'GET':
+    if request.method == 'POST':
         try:
             curr_course = Course.objects.get(course_id=course_id)
             curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
@@ -36,6 +62,7 @@ def assignment_publish(request, course_id, assign_id):
                 curr_assign.current_status = 'published'
                 curr_assign.published_for_subs = True
                 curr_assign.save()
+                print(curr_assign.status)
                 return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
             return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -119,7 +146,6 @@ class AddSingleUserView(views.APIView):
             return Response({'message': 'The course does not exist'}, status=404)
         
         ser = SingleUserSerializer(data=request.data)
-        print(ser.initial_data)
         if ser.is_valid():
             email = ser.data.get('email')
             name = ser.data.get('name')
@@ -162,7 +188,6 @@ class AddSingleUserView(views.APIView):
             except SwagraderUser.DoesNotExist:
                 # create new user and handle the addition to the course here
                 # return Response here as it is
-                print("Creating new user ...")
                 from django.utils.crypto import get_random_string
 
                 name_split = name.split()
@@ -175,8 +200,6 @@ class AddSingleUserView(views.APIView):
                                                                     '23456789')
                 user = SwagraderUser(email=email, institute_id=roll_no, first_name=fname, last_name=lname)
                 user.set_password(pwd)
-
-                print(user, " this will be created, with role: ", string_role[role])
 
                 if role == 'i': 
                     user.global_instructor_privilege = True
