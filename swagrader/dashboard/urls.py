@@ -24,4 +24,5 @@ urlpatterns = [
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/publish', assignment_publish),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/questions', QuestionListView.as_view()),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/submit', submit_assignment),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/create-rubrics', create_global_rubrics_instructor),
 ]

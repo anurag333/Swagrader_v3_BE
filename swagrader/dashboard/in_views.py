@@ -15,7 +15,83 @@ import random
 import string
 from datetime import datetime
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 
+@login_required
+@api_view(['POST'])
+def create_global_rubrics_instructor(request, course_id, assign_id):
+    try:
+        curr_course = Course.objects.get(course_id=course_id)
+        curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
+    except Course.DoesNotExist or Assignment.DoesNotExist:
+        raise Http404
+
+    if request.method == 'POST':
+       # we'll decide later what to do with the curr_assign.current_status
+        if request.user not in curr_course.instructors.all():
+            return Response({'message': 'You are not allowed for this operation.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        sample = {
+            'ques_id': 1,
+            'rubrics': [
+                {
+                    'description': 'Full marks',
+                    'marks': 10 
+                }
+            ],
+            'sub_rubrics': [
+                {
+                    'sques_id': 1,
+                    'desc': 'some desc',
+                    'marks': 6
+                }
+            ]
+        }
+        
+        for q_rubric in request.data.get('rubric_data'):
+            qid = q_rubric.get('ques_id', None)
+            if qid != None:
+                try:
+                    ques = curr_assign.questions.get(ques_id=qid)
+                    ques.g_rubrics.all().delete()
+                    rubrics = q_rubric.get('rubrics', None)
+                    if rubrics != None:
+                        for r_data in rubrics:
+                            desc = r_data.get('description', None)
+                            marks = r_data.get('marks', None)
+                            if desc != None and marks != None:
+                                GlobalRubric.objects.create(description=desc, marks=marks, question=ques)
+                    else:
+                        return Response({'message': 'Bad input, rubrics key is necessary'}, status=400)
+                            
+                    subrubrics = q_rubric.get('sub_rubrics', None)
+                    if subrubrics == None:
+                        return Response({'message': 'Bad input, sub-rubrics key is necessary'}, status=400)
+                    else:
+                        for sr_data in subrubrics:
+                            sid = sr_data.get('sques_id', None)
+                            if sid == None:
+                                return Response({'message': 'Bad input, sques_id is necessary'}, status=400)
+                            else:
+                                try:
+                                    s_ques = ques.sub_questions.get(sques_id=sid)
+                                    s_ques.g_subrubrics.all().delete()
+
+                                    desc = sr_data.get('description', None)
+                                    marks = sr_data.get('marks', None)
+                                    if desc != None and marks != None:
+                                        GlobalSubrubric.objects.create(description=desc, marks=marks, sub_question=ques)
+                                except SubQuestion.DoesNotExist:
+                                    return Response({'message': 'Bad input, sques_id is invalid'}, status=400)
+            
+                except Question.DoesNotExist:
+                    return Response({'message': 'Bad input, question does not exist'}, status=400)
+            else:
+                return Response({'message': 'Bad input, ques_id is none'}, status=400)
+        return Response({'message': 'Done'}, status=200)
+
+@login_required
 @api_view(['POST'])
 def close_submissions(request, course_id, assign_id):
     if request.method == 'POST':
@@ -39,9 +115,8 @@ def close_submissions(request, course_id, assign_id):
             print(curr_assign.status)
             return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
         return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
-        
-        return Response({'message': 'You cannot close the assignment since it was closed already.'}, status=status.HTTP_403_FORBIDDEN)
 
+@login_required     
 @api_view(['POST'])
 def assignment_publish(request, course_id, assign_id):
     if request.method == 'POST':
@@ -68,6 +143,7 @@ def assignment_publish(request, course_id, assign_id):
         
         return Response({'message': 'You cannot publish the assignment since it was published already.'}, status=status.HTTP_403_FORBIDDEN)
 
+@login_required
 @api_view(['GET', 'POST'])
 def assignment_outline_detail(request, course_id, assign_id):
     if request.method == 'GET':
@@ -327,5 +403,96 @@ class AssignmentCreateView(generics.CreateAPIView, generics.UpdateAPIView):
         curr_course = Course.objects.get(course_id=self.kwargs['course_id'])
         serializer.save(course=curr_course, published_for_subs=published_for_subs)
 
+class GradingMethodSelection(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]   
 
+    def post(self, request, course_id, assign_id):
+        course = get_object_or_404(Course, course_id=course_id)
+        assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
+        if not request.user in course.instructors.all():
+            return Response({'message': 'only instructors are allowed for the operation'}, status=status.HTTP_403_FORBIDDEN)
+
+        flow = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
+        if assign.curr_status in flow[3:6]:
+            method = request.data.get('method', None)
+            if method == None or not method in ['pg', 'ng']:
+                return Response({'message': 'Bad input'}, status=400)
+            
+            assign.grading_methodology = method
+            assign.curr_status = 'method_selected'
+            assign.save()
+            return Response({'message': 'Method selected for grading.'}, status=200)
+        else:
+            return Response({'message': f'the current status is {assign.current_status}. You cannot select the grading method on this stage.'}, status=status.HTTP_403_FORBIDDEN)
+
+@login_required
+@api_view(['POST', 'GET'])
+def stage_grading(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
+    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
+    User = get_user_model()
+    if request.method == 'POST':
+        if assign.current_status == 'method_selected':
+            role = request.data.get('role', None)
+            email = request.data.get('email', None)
+            action = request.data.get('action', None)
+            if role and email and action and role in ['s', 't', 'i'] and action in ['add', 'remove']:
+                if assign.grading_methodology == 'pg':
+                    pg_profile = assign.assignment_peergrading_profile
+                    if role == 's':
+                        if pg_profile.peergraders.all().filter(email=email).exists():
+                            if action == 'add':
+                                return Response({'message': 'Already Exists!'}, status=400)
+                            else:
+                                peergrader = User.objects.get(email=email)
+                                pg_profile.peergraders.remove(peergrader)
+                                return Response({'message': 'successfully removed!'}, status=200)
+                        else:
+                            return Response({'message': 'student does not exist in staging'}, status=404)
+                    
+                    elif role == 't':
+                        if pg_profile.ta_graders.all().filter(email=email).exists():
+                            if action == 'add':
+                                return Response({'message': 'Already Exists!'}, status=400)
+                            else:
+                                ta = User.objects.get(email=email)
+                                pg_profile.ta_graders.remove(ta)
+                                return Response({'message': 'successfully removed!'}, status=200)
+                        else:
+                            return Response({'message': 'ta does not exist in staging'}, status=404)
+
+                    elif role == 'i':
+                        if pg_profile.instructor_graders.all().filter(email=email).exists():
+                            if action == 'add':
+                                return Response({'message': 'Already Exists!'}, status=400)
+                            else:
+                                instructor = User.objects.get(email=email)
+                                pg_profile.instructor_graders.remove(instructor)
+                                return Response({'message': 'successfully removed!'}, status=200)
+                        else:
+                            return Response({'message': 'instructor does not exist in staging'}, status=404)
+                else:
+                    pass
+            else:
+                return Response({'message': 'Bad input.'}, status=400)
+        else:
+            return Response({'message': f'Assignment cannot be staged as the current status is {assign.current_status}.'}, status=403)
     
+    else:
+        if assign.current_status in FLOW[4:6]:
+            if assign.grading_methodology == 'pg':
+                pg_profile = assign.assignment_peergrading_profile
+                pg = pg_profile.peergraders.all()
+                tg = pg_profile.ta_graders.all()
+                ig = pg_profile.instructor_graders.all()
+
+                response = {}
+                response['peergraders'] = StagingRosterSerializer(pg, many=True).data
+                response['ta_graders'] = StagingRosterSerializer(tg, many=True).data
+                response['in_graders'] = StagingRosterSerializer(ig, many=True).data
+                return Response(response, status=200)
+            else:
+                pass
+        else:
+            return Response({'message': f'Assignment cannot be staged as the current status is {assign.current_status}.'}, status=403)

@@ -3,8 +3,11 @@ from django.urls import path, include
 from dashboard.views import EmailNamespaceListView
 from django.conf import settings
 from django.conf.urls.static import static
+from dashboard.basic_setup import Setup, purge
 
 urlpatterns = [
+    path('setup/', Setup.as_view()),
+    path('purge/', purge),
     path('admin/', admin.site.urls),
     path('auth/registration/', include('rest_auth.registration.urls')),
     path('auth/', include('rest_auth.urls')),

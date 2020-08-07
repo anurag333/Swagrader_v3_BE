@@ -19,10 +19,11 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
     published_for_subs = serializers.BooleanField(read_only=True)
     status = serializers.SerializerMethodField()
     graded = serializers.BooleanField(read_only=True)
+    grading_methodology = serializers.ReadOnlyField(source='grading_methodology')
 
     class Meta:
         model = Assignment
-        fields = ['assign_id', 'course', 'title', 'pdf', 'publish_date', 'submission_deadline', 'allow_late_subs', 'late_sub_deadline', 'published_for_subs', 'status', 'graded']
+        fields = ['assign_id', 'course', 'title', 'pdf', 'publish_date', 'submission_deadline', 'allow_late_subs', 'late_sub_deadline', 'published_for_subs', 'status', 'grading_methodology', 'graded']
     
     def get_status(self, assignment):
         return assignment.current_status
@@ -133,23 +134,60 @@ class CourseRosterSerializer(serializers.ModelSerializer):
         if roster.user in roster.course.students.all(): role.append('student') 
         return role
     
+
+class GlobalRubricSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalRubric
+        fields = ['description', 'marks'] 
+
+class GlobalSubrubricSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalSubrubric
+        fields = ['description', 'marks']
+
+    
 class SubQuestionSerializer(WritableNestedModelSerializer):
     parent_ques = serializers.StringRelatedField(allow_null=False)
-    
+    global_subrubrics = serializers.SerializerMethodField()
+
     class Meta:
         model = SubQuestion
-        fields = ['parent_ques','sno', 'title', 'marks']
+        fields = ['parent_ques','sno', 'sques_id', 'title', 'marks', 'global_subrubrics']
+    
+    def get_global_subrubrics(self, sques):
+        subrubrics = sques.g_subrubrics.all()
+        ser = GlobalSubrubricSerializer(subrubrics, many=True)
+        return ser.data
+        # print(ser.initial_data)
+        # if ser.is_valid(raise_exception=True):
+        #     return ser.data
 
 class QuestionSerializer(WritableNestedModelSerializer):
     parent_assign = serializers.StringRelatedField(allow_null=False)
     sub_questions = SubQuestionSerializer(many=True, allow_null=True)
+    global_rubrics = serializers.SerializerMethodField()
     
     class Meta:
         model = Question
-        fields = ['parent_assign', 'sno', 'title', 'marks', 'sub_questions']
+        fields = ['parent_assign', 'sno', 'ques_id', 'title', 'marks', 'global_rubrics', 'sub_questions']
+
+    def get_global_rubrics(self, ques):
+        rubrics = ques.g_rubrics.all()
+        ser = GlobalRubricSerializer(rubrics, many=True)
+        return ser.data
+        # print(ser.initial_data)
+        # if ser.is_valid(raise_exception=True):
+        #     return ser.data
+        
 
 class QuestionListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
         fields = ['ques_id', 'sno', 'title', 'marks']
+
+class StagingRosterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SwagraderUser
+        fields = ['email', 'first_name', 'last_name', 'institute_id']
+    

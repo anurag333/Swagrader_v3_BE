@@ -80,8 +80,9 @@ class Assignment(models.Model):
                                             ('set_outline', 'Set outline'),
                                             ('outline_set', 'publish assign'),
                                             ('published', 'close submissions'),
-                                            ('close_subs', 'Map submissions'),
-                                            ('select method', 'Select grading methodology'),
+                                            ('subs_closed', 'Select grading method'),
+                                            ('method_selected', 'Stage for grading'),
+                                            ('started', 'Grading Started')
                                             ), default='set_outline')
                                             
     def __str__(self):
@@ -98,6 +99,8 @@ class AssignmentGradingProfile(models.Model):
                                             ('stage', 'Stage grading'),
                                             ('start', 'Start grading'),
                                             ('end', 'End grading')), default='outline')
+    instructor_graders                  = models.ManyToManyField(settings.AUTH_USER_MODEL, 'in_graded_assignments')
+    ta_graders                          = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name = 'ta_graded_assignments', blank=True) 
 
 class AssignmentPeergradingProfile(models.Model):
     # alpha
@@ -108,6 +111,10 @@ class AssignmentPeergradingProfile(models.Model):
     probing_deadline        = models.DateField(null=True, blank=True)
     peergrading_deadline    = models.DateField(null=True, blank=True)
     n_probes                = models.IntegerField(default=20, help_text='These are the number of probes you want to set for this assignment.')
+
+    instructor_graders      = models.ManyToManyField(settings.AUTH_USER_MODEL, 'in_pgraded_assignments')
+    peergraders             = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='st_pgraded_assignments', blank=True)
+    ta_graders              = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name = 'ta_pgraded_assignments', blank=True) 
 
 
 """
@@ -161,3 +168,22 @@ class QuestionSubmission(models.Model):
     submission  = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE, related_name='submissions')
     question    = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='qsubmissions')
     pdf         = models.FileField(upload_to = qsub_path, validators=[FileExtensionValidator(allowed_extensions=['pdf'])])
+
+class GlobalRubric(models.Model):
+    rubric_id = models.AutoField(primary_key=True)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='g_rubrics')
+    description = models.CharField(max_length=100)
+    marks = models.IntegerField(default=0)
+
+class GlobalSubrubric(models.Model):
+    sub_rubric_id = models.AutoField(primary_key=True)
+    sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='g_subrubrics')
+    description = models.CharField(max_length=100)
+    marks = models.IntegerField(default=0) 
+
+
+
+
+
+
+
