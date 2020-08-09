@@ -69,8 +69,8 @@ class Assignment(models.Model):
     submission_deadline                 = models.DateTimeField()
     allow_late_subs                     = models.BooleanField()
     late_sub_deadline                   = models.DateTimeField(null=True)
-    # weightage in the course
-    # penalty for late subs
+    late_sub_penalty                    = models.FloatField(default=0)
+    weightage                           = models.FloatField(default=0)
     published_for_subs                  = models.BooleanField(default=False)
     average                             = models.FloatField(default=0)
     regrading_requests                  = models.BooleanField(default = True)
@@ -180,6 +180,13 @@ class GlobalSubrubric(models.Model):
     sub_question = models.ForeignKey(SubQuestion, on_delete=models.CASCADE, related_name='g_subrubrics')
     description = models.CharField(max_length=100)
     marks = models.IntegerField(default=0) 
+
+class ProbeSubmission(models.Model):
+    probe_id = models.BigAutoField(primary_key=True)
+    parent_sub = models.OneToOneField(AssignmentSubmission, on_delete=models.CASCADE, related_name='probe_submission')
+    probe_grader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='probes_to_check', blank=True, null=True)
+    true_score = models.FloatField(default=0)
+
 
 
 

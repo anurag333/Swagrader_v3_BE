@@ -17,6 +17,7 @@ from datetime import datetime
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from .utility import *
 
 @login_required
 @api_view(['POST'])
@@ -104,17 +105,21 @@ def close_submissions(request, course_id, assign_id):
         if request.user not in curr_course.instructors.all():
             return Response({'message': 'You are not allowed for this operation.'}, status=status.HTTP_403_FORBIDDEN)
         
-        if not curr_assign.current_status == 'published':
-            return Response({'message': 'This operation is only allowed for published assignments.'}, status=status.HTTP_403_FORBIDDEN)
-
-        
-        if curr_assign.publish_date <= timezone.now() < curr_assign.submission_deadline:
-            curr_assign.current_status = 'published'
+        if curr_assign.current_status == 'published':
+            curr_assign.current_status = 'subs_closed'
             curr_assign.published_for_subs = False
             curr_assign.save()
-            print(curr_assign.status)
-            return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
-        return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Assignment closed successfully.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'This operation is only allowed for published assignments.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # if curr_assign.publish_date <= timezone.now() < curr_assign.submission_deadline:
+        #     curr_assign.current_status = 'published'
+        #     curr_assign.published_for_subs = False
+        #     curr_assign.save()
+        #     print(curr_assign.status)
+        #     return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
+        # return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
 
 @login_required     
 @api_view(['POST'])
@@ -432,6 +437,8 @@ def stage_grading(request, course_id, assign_id):
     assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
     FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
     User = get_user_model()
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403) 
     if request.method == 'POST':
         if assign.current_status == 'method_selected':
             role = request.data.get('role', None)
@@ -496,3 +503,44 @@ def stage_grading(request, course_id, assign_id):
                 pass
         else:
             return Response({'message': f'Assignment cannot be staged as the current status is {assign.current_status}.'}, status=403)
+
+
+@login_required
+@api_view(['POST'])
+def set_number_of_probes(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
+    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
+    User = get_user_model()
+    if request.method == 'POST':
+        if assign.current_status == 'method_selected':
+            try:
+                probes = request.data.get('probes')
+                if assign.assign_submissions.all().count() < probes:
+                    return Response({'message': 'This assign does not have that many submissions'}, status=400)
+                assign.assignment_peergrading_profile.n_probes = probes
+                assign.assignment_peergrading_profile.save()
+            except:
+                return Response({'message': 'probes key not passed'}, status=400)
+        return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
+
+@login_required
+@api_view(['POST'])
+def start_peergrading(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
+
+    if assign.current_status == 'method_selected':
+        # select probes by some logic, we define it later here, probes would be selected 
+        # Probe is more like a submission, Probe will have a grader, marks, rubrics 
+        
+        subs = assign.assign_submissions.all()
+        probes = get_probes(subs, method='random')
+        
+        # we want to return the probes, just the IDs    
+        return Response(probes, status=200)
+
+    else:
+        return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})

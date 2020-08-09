@@ -33,7 +33,7 @@ class Setup(APIView):
             "entry_restricted": False
         }
 
-        course = Course.objects.create(**course_data)
+        course = Course.objects.create(**course_data, entry_key = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(7)]))
         course.instructors.add(instructor)
         course.students.add(student)
         course.teaching_assistants.add(ta)
@@ -46,7 +46,7 @@ class Setup(APIView):
             'pdf': pdf,
             'publish_date': publish_date,
             'submission_deadline': submission_deadline,
-            'allow_late_subs': False
+            'allow_late_subs': False,
         }
 
         assign = Assignment.objects.create(**assign_data, course=course)
@@ -89,6 +89,9 @@ class Setup(APIView):
             for sq in sub_questions:
                 SubQuestion.objects.create(**sq, parent_ques=question)
 
+        assign.current_status = 'published'
+        assign.published_for_subs = True
+        assign.save()
         return Response({'message': 'Setup Successful!'}, status=200)
 
 @api_view(['POST'])

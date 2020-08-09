@@ -19,7 +19,7 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
     published_for_subs = serializers.BooleanField(read_only=True)
     status = serializers.SerializerMethodField()
     graded = serializers.BooleanField(read_only=True)
-    grading_methodology = serializers.ReadOnlyField(source='grading_methodology')
+    grading_methodology = serializers.ReadOnlyField()
 
     class Meta:
         model = Assignment
@@ -34,7 +34,7 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
 
         if data['allow_late_subs']:
             if data['late_sub_deadline'] != None:
-                if data['late_sub_deadline'] <= self.submission_deadline:
+                if data['late_sub_deadline'] <= data['submission_deadline']:
                     raise serializers.ValidationError("Late submission deadline should not be earlier than the submission date.")
                 return data
             raise serializers.ValidationError("Set the late submission deadline for the assignment or uncheck the allow late sub flag.")
