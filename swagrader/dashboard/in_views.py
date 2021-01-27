@@ -21,79 +21,6 @@ from .utility import *
 
 @login_required
 @api_view(['POST'])
-def create_global_rubrics_instructor(request, course_id, assign_id):
-    try:
-        curr_course = Course.objects.get(course_id=course_id)
-        curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
-    except Course.DoesNotExist or Assignment.DoesNotExist:
-        raise Http404
-
-    if request.method == 'POST':
-       # we'll decide later what to do with the curr_assign.current_status
-        if request.user not in curr_course.instructors.all():
-            return Response({'message': 'You are not allowed for this operation.'}, status=status.HTTP_403_FORBIDDEN)
-        
-        sample = {
-            'ques_id': 1,
-            'rubrics': [
-                {
-                    'description': 'Full marks',
-                    'marks': 10 
-                }
-            ],
-            'sub_rubrics': [
-                {
-                    'sques_id': 1,
-                    'desc': 'some desc',
-                    'marks': 6
-                }
-            ]
-        }
-        
-        for q_rubric in request.data.get('rubric_data'):
-            qid = q_rubric.get('ques_id', None)
-            if qid != None:
-                try:
-                    ques = curr_assign.questions.get(ques_id=qid)
-                    ques.g_rubrics.all().delete()
-                    rubrics = q_rubric.get('rubrics', None)
-                    if rubrics != None:
-                        for r_data in rubrics:
-                            desc = r_data.get('description', None)
-                            marks = r_data.get('marks', None)
-                            if desc != None and marks != None:
-                                GlobalRubric.objects.create(description=desc, marks=marks, question=ques)
-                    else:
-                        return Response({'message': 'Bad input, rubrics key is necessary'}, status=400)
-                            
-                    subrubrics = q_rubric.get('sub_rubrics', None)
-                    if subrubrics == None:
-                        return Response({'message': 'Bad input, sub-rubrics key is necessary'}, status=400)
-                    else:
-                        for sr_data in subrubrics:
-                            sid = sr_data.get('sques_id', None)
-                            if sid == None:
-                                return Response({'message': 'Bad input, sques_id is necessary'}, status=400)
-                            else:
-                                try:
-                                    s_ques = ques.sub_questions.get(sques_id=sid)
-                                    s_ques.g_subrubrics.all().delete()
-
-                                    desc = sr_data.get('description', None)
-                                    marks = sr_data.get('marks', None)
-                                    if desc != None and marks != None:
-                                        GlobalSubrubric.objects.create(description=desc, marks=marks, sub_question=ques)
-                                except SubQuestion.DoesNotExist:
-                                    return Response({'message': 'Bad input, sques_id is invalid'}, status=400)
-            
-                except Question.DoesNotExist:
-                    return Response({'message': 'Bad input, question does not exist'}, status=400)
-            else:
-                return Response({'message': 'Bad input, ques_id is none'}, status=400)
-        return Response({'message': 'Done'}, status=200)
-
-@login_required
-@api_view(['POST'])
 def close_submissions(request, course_id, assign_id):
     if request.method == 'POST':
         try:
@@ -176,9 +103,12 @@ def assignment_outline_detail(request, course_id, assign_id):
         if request.user not in curr_course.instructors.all():
             return Response({'message': 'You are not allowed for this operation'}, status=status.HTTP_403_FORBIDDEN)
 
-        if not curr_assign.graded:
+        if curr_assign.current_status not in ['subs_closed', 'method_selected', 'grading_started']:
             for question in curr_assign.questions.all():
-                question.delete()
+                try:
+                    question.delete()
+                except:
+                    return Response({'message': f'fatal error in deleting existing outline, try later'}, status=500)
 
             post_data = []
             for question in request.data:
@@ -189,13 +119,13 @@ def assignment_outline_detail(request, course_id, assign_id):
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             if len(post_data) > 0:
-                print('changing the assign status now from: ', curr_assign.current_status)
-                curr_assign.current_status = 'outline_set'
-                curr_assign.save()
+                if curr_assign.current_status == 'set_outline':
+                    curr_assign.current_status = 'outline_set'
+                    curr_assign.save()
 
             return Response(post_data, status=status.HTTP_201_CREATED)
         else:
-            return Response({'Message':'The assignment has been graded, only get requests to the page are allowed'}, status=status.HTTP_200_OK)
+            return Response({'Message': f'You cannot modify the outline now. The current status of assign is {curr_assign.current_status}'}, status=400)
 
 class CourseCreateView(generics.CreateAPIView):
     queryset = Course.objects.all()
@@ -378,8 +308,8 @@ class AssignmentDetailUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         from datetime import datetime
-        publish_date = serializer.initial_data.get('publish_date')
-        submission_deadline = serializer.initial_data.get('submission_deadline')
+        publish_date = serializer.initial_data.get('publish_date', None)
+        submission_deadline = serializer.initial_data.get('submission_deadline', None)
         format = "%Y-%m-%dT%H:%M"
 
         published_for_subs = False
@@ -389,12 +319,12 @@ class AssignmentDetailUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         curr_course = Course.objects.get(course_id=self.kwargs['course_id'])
         serializer.save(course=curr_course, published_for_subs=published_for_subs)
 
-class AssignmentCreateView(generics.CreateAPIView, generics.UpdateAPIView):
+class AssignmentCreateView(generics.CreateAPIView):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentListCreateSerializer
     permission_classes = [permissions.IsAuthenticated, IsInstructorForMetadata]
     lookup_field = 'course_id'
-
+    
     def perform_create(self, serializer):
         from datetime import datetime
         publish_date = serializer.initial_data.get('publish_date')
@@ -410,15 +340,13 @@ class AssignmentCreateView(generics.CreateAPIView, generics.UpdateAPIView):
 
 class GradingMethodSelection(views.APIView):
     permission_classes = [permissions.IsAuthenticated]   
-
     def post(self, request, course_id, assign_id):
         course = get_object_or_404(Course, course_id=course_id)
         assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
         if not request.user in course.instructors.all():
             return Response({'message': 'only instructors are allowed for the operation'}, status=status.HTTP_403_FORBIDDEN)
 
-        flow = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
-        if assign.curr_status in flow[3:6]:
+        if assign.curr_status in ['subs_closed', 'method_selected'] :
             method = request.data.get('method', None)
             if method == None or not method in ['pg', 'ng']:
                 return Response({'message': 'Bad input'}, status=400)
@@ -435,7 +363,7 @@ class GradingMethodSelection(views.APIView):
 def stage_grading(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
-    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
+    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'grading_started']
     User = get_user_model()
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403) 
@@ -510,7 +438,7 @@ def stage_grading(request, course_id, assign_id):
 def set_number_of_probes(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
-    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'staged', 'grading_started']
+    FLOW = ['set_outline', 'outline_set', 'published', 'subs_closed', 'method_selected', 'grading_started']
     User = get_user_model()
     if request.method == 'POST':
         if assign.current_status == 'method_selected':
@@ -526,7 +454,7 @@ def set_number_of_probes(request, course_id, assign_id):
 
 @login_required
 @api_view(['POST'])
-def start_peergrading(request, course_id, assign_id):
+def start_grading(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
     if not request.user in course.instructors.all():
@@ -535,12 +463,150 @@ def start_peergrading(request, course_id, assign_id):
     if assign.current_status == 'method_selected':
         # select probes by some logic, we define it later here, probes would be selected 
         # Probe is more like a submission, Probe will have a grader, marks, rubrics 
-        
-        subs = assign.assign_submissions.all()
-        probes = get_probes(subs, method='random')
-        
-        # we want to return the probes, just the IDs    
-        return Response(probes, status=200)
+        if assign.grading_methodology == "pg":
 
+            subs = assign.assign_submissions.all()
+            probes = get_probes(subs, method='random')
+            if probes:
+                assign.current_status == 'grading_started'
+                assign.save()    
+                return Response(probes, status=200)
+            else:
+                return Response({"message": "Internal error in probe selection"}, status=500)
+        
+        elif assign.grading_methodology == "ng":
+            return Response(status=200)
+
+        else:
+            return Response({'message': 'grading methodology must be either pg or ng'}, status=400)
     else:
         return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
+    
+@login_required
+@api_view(['GET','POST'])
+def grade_probe_instructor(request, course_id, assign_id, probe_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(Course.authored_assignments.all(), assign_id=assign_id)
+
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
+
+    if assign.current_status == 'probes_selected':
+        return Response({'message': 'This step is not activated'}, status=403)
+
+    probe = get_object_or_404(assign.assign_submissions.all(), probe_submission__probe_id = probe_id)
+    if request.method == 'GET':
+        # give back the details for the assign, which is essentially the outline, and the global rubrics which are set for this assign
+        outline_with_rubrics = get_outline_with_rubrics(probe)
+        return Response(outline_with_rubrics, status=200)
+
+    elif request.method == 'POST':
+        # payload will be like
+        sample_payload = {
+            "questions": [
+                {
+                    "qid": 23,
+                    "max_marks": 30,
+                    "min_marks": 0,
+                    "rubrics": [
+                        {
+                            "marks": 10,
+                            "description": "Step 1 is correct",
+                            "selected": True
+                        }
+                    ],
+                    "comment": {
+                        "marks": None,
+                        "description": None,
+                    },
+                    "sub_questions": [
+                        {
+                            "sqid": 1,
+                            "max_marks": 10,
+                            "min_marks": 0,
+                            "sub_rubrics": [
+                                {
+                                    "marks": 10,
+                                    "description": "Step 1 is correct",
+                                    "selected": False,
+                                }
+                            ],
+                            "comment": {
+                                "marks": None,
+                                "description": None,
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        questions = request.DATA.get("questions", None)
+        
+        # check for payload sanitization
+        sanitization_status = sanitization_check(assign, questions)
+
+        if sanitization_status == 'ok':
+            for q in questions:
+                qid = q['qid']
+                rubrics = q['rubrics']
+                max_marks = q['max_marks']
+                min_marks = q['min_marks']
+                sub_questions = q['sub_questions']
+                comment = q['comment']
+                ques = assign.questions.get(ques_id=qid)
+
+                if comment['marks'] != None:
+                    probe_qsub = get_object_or_404(probe.probe_questions.all(), parent_ques__ques_id = qid)
+                    try:
+                        probe_qsub.comment.delete()
+                        ProbeSubmissionQuestionComment.objects.create(parent_ques=probe_qsub, marks=comment['marks'], comment=comment['description'])
+                    except:
+                        return Response({"message": "Error in deletion of comment"}, status=500)
+                if rubrics:
+                    try:
+                        ques.g_rubrics.all().delete()
+                        for r_data in rubrics:
+                            desc = r_data.get('description', None)
+                            marks = r_data.get('marks', None)
+                            rub = GlobalRubric.objects.create(description=desc, marks=marks, question=ques)
+                            
+                            if r_data['selected']: 
+                                rub.probe_rubric.selected = True
+                                rub.save()
+                    except:
+                        return Response({"message": "Error in deletion of previous rubrics"}, status=500)
+                else: 
+                    GlobalRubric.objects.create(description="Correct", marks=max_marks, question=ques)
+                    GlobalRubric.objects.create(description="Incorrect", marks=min_marks, question=ques)
+
+                for sq in sub_questions:
+                    sqid = sq['sqid']
+                    sub_rubrics = sq['sub_rubrics']
+                    sq_max_marks = sq['max_marks']
+                    sq_min_marks = sq['min_marks']
+                    if sub_rubrics:
+                        sub_ques = ques.sub_questions.get(sques_id=sqid)
+                        try:
+                            sub_ques.g_subrubrics.all().delete()
+                            for sr_data in sub_rubrics:
+                                desc = sr_data.get('description', None)
+                                marks = sr_data.get('marks', None)
+                                srub = GlobalSubrubric.objects.create(description=desc, marks=marks, sub_question=sub_ques)
+                                if sr_data['selected']: 
+                                    srub.probe_subrubric.selected = True
+                                    srub.save()
+                        except:
+                            return Response({"message": "Error in deletion of previous sub_rubrics"}, status=500)
+                    else: 
+                        GlobalSubrubric.objects.create(description="Correct", marks=sq_max_marks, sub_question=ques)
+                        GlobalSubrubric.objects.create(description="Incorrect", marks=sq_min_marks, sub_question=ques)
+        else:
+            return Response({"message": sanitization_status}, status=400)
+
+
+def start_peergrading():
+    # distribute, create all profiles and rubrics, and action!
+    # The idea is to use the DAGs for the problem and then see what can be done for that for the cause in the problem for that
+    # So for this we will start with the fact that we cannot create a loop < n-k+1 length in this
+    # Lets try to create a mock example for this and later we will essentially do this for all the questions (np)
+    pass

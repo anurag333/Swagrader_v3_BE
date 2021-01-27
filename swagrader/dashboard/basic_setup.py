@@ -55,29 +55,34 @@ class Setup(APIView):
             {
                 "sno": 2,
                 "title": "second question",
-                "marks": 5.0,
+                "max_marks": 5.0,
+                "min_marks": 0,
                 "sub_questions": [
                     {
                         "sno": 1,
                         "title": "the only subquestion",
-                        "marks": 5.0
+                        "max_marks": 5.0,
+                        "min_marks": 0
                     }
                 ]
             },
             {
                 "sno": 1,
                 "title": "first question",
-                "marks": 10.0,
+                "max_marks": 10.0,
+                "min_marks": 0,
                 "sub_questions": [
                     {
                         "sno": 2,
                         "title": "second subquestion",
-                        "marks": 2.0
+                        "max_marks": 2.0,
+                        "min_marks": 0
                     },
                     {
                         "sno": 1,
                         "title": "first subquestion",
-                        "marks": 8.0
+                        "max_marks": 8.0,
+                        "min_marks": 0
                     }
                 ]
             }

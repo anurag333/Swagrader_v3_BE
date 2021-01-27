@@ -29,6 +29,14 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
         return assignment.current_status
 
     def validate(self, data):
+        sub_deadline = data.get('submission_deadline', -1)
+        pub_date = data.get('publish_date', -1)
+        late_subs = data.get('allow_late_subs', -1)
+        late_sub_deadline = data.get('late_sub_deadline', -1)
+
+        if sub_deadline == -1 and pub_date == -1 and late_subs == -1 and late_sub_deadline == -1:
+            return data
+            
         if data['submission_deadline'] <= data['publish_date']:
             raise serializers.ValidationError("Submission deadline should not be earlier than publishing date.")
 
@@ -152,15 +160,12 @@ class SubQuestionSerializer(WritableNestedModelSerializer):
 
     class Meta:
         model = SubQuestion
-        fields = ['parent_ques','sno', 'sques_id', 'title', 'marks', 'global_subrubrics']
+        fields = ['parent_ques','sno', 'sques_id', 'title', 'min_marks', 'max_marks', 'global_subrubrics']
     
     def get_global_subrubrics(self, sques):
         subrubrics = sques.g_subrubrics.all()
         ser = GlobalSubrubricSerializer(subrubrics, many=True)
         return ser.data
-        # print(ser.initial_data)
-        # if ser.is_valid(raise_exception=True):
-        #     return ser.data
 
 class QuestionSerializer(WritableNestedModelSerializer):
     parent_assign = serializers.StringRelatedField(allow_null=False)
@@ -169,22 +174,18 @@ class QuestionSerializer(WritableNestedModelSerializer):
     
     class Meta:
         model = Question
-        fields = ['parent_assign', 'sno', 'ques_id', 'title', 'marks', 'global_rubrics', 'sub_questions']
+        fields = ['parent_assign', 'sno', 'ques_id', 'title', 'min_marks', 'max_marks', 'global_rubrics', 'sub_questions']
 
     def get_global_rubrics(self, ques):
         rubrics = ques.g_rubrics.all()
         ser = GlobalRubricSerializer(rubrics, many=True)
         return ser.data
-        # print(ser.initial_data)
-        # if ser.is_valid(raise_exception=True):
-        #     return ser.data
-        
 
 class QuestionListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ['ques_id', 'sno', 'title', 'marks']
+        fields = ['ques_id', 'sno', 'title', 'min_marks', 'max_marks']
 
 class StagingRosterSerializer(serializers.ModelSerializer):
     class Meta:

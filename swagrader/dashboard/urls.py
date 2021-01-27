@@ -4,8 +4,6 @@ from .ta_views import *
 from .views import *
 from .st_views import *
 
-
-
 urlpatterns = [
     path('', CourseListView.as_view()),
     path('enroll', EnrollCourseView.as_view()),
@@ -24,5 +22,11 @@ urlpatterns = [
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/publish', assignment_publish),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/questions', QuestionListView.as_view()),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/submit', submit_assignment),
-    path('courses/<uuid:course_id>/assignments/<int:assign_id>/create-rubrics', create_global_rubrics_instructor),
+
+    # grading
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/grading-method-selection', GradingMethodSelection.as_view()),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/stage-grading', stage_grading),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/set-np', set_number_of_probes),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/start-grading', start_grading),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/create-rubrics', grade_probe_instructor),
 ]

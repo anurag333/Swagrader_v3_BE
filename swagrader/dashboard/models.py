@@ -60,7 +60,7 @@ class Assignment(models.Model):
         return 'course_{0}-{3}/{1}/Answer_Key/{2}'.format(self.course.course_number, title, filename, str(self.course.course_id)[0:6])
     
     assign_id                           = models.BigAutoField(primary_key=True)
-    pdf                                 = models.FileField(upload_to = assignment_path, validators=[FileExtensionValidator(allowed_extensions=['pdf'])]) 
+    pdf                                 = models.FileField(upload_to = assignment_path, validators=[FileExtensionValidator(allowed_extensions=['pdf', 'txt'])]) 
     answer_pdf                          = models.FileField(upload_to=answer_path, validators=[FileExtensionValidator(allowed_extensions=['pdf','doc','txt'])], null=True, blank=True)
     course                              = models.ForeignKey(Course, on_delete = models.CASCADE, related_name = 'authored_assignments')
     title                               = models.CharField(max_length = 30)
@@ -121,11 +121,12 @@ class AssignmentPeergradingProfile(models.Model):
 Each assignment will comprise of some questions, which are instantiations of the question model class.
 """
 class Question(models.Model):
-    ques_id         = models.BigAutoField(primary_key=True)
-    parent_assign   = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='questions')
-    sno             = models.IntegerField(default=0)
-    title           = models.CharField(max_length=200)
-    marks           = models.FloatField(default=0)
+    ques_id             = models.BigAutoField(primary_key=True)
+    parent_assign       = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='questions')
+    sno                 = models.IntegerField(default=0)
+    title               = models.CharField(max_length=200)
+    min_marks           = models.FloatField(default=0)
+    max_marks           = models.FloatField(default=0)
 
     def __str__(self):
         return '{0}: Ques_{1}'.format(self.parent_assign.title, self.sno)
@@ -137,11 +138,12 @@ class Question(models.Model):
 Each question will comprise of some sub-questions, which are instantiations of the sub-question model class.
 """
 class SubQuestion(models.Model):
-    sques_id        = models.BigAutoField(primary_key=True)
-    parent_ques     = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='sub_questions')
-    sno             = models.IntegerField(default=0)
-    title           = models.CharField(max_length=200)
-    marks           = models.FloatField(default=0)
+    sques_id            = models.BigAutoField(primary_key=True)
+    parent_ques         = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='sub_questions')
+    sno                 = models.IntegerField(default=0)
+    title               = models.CharField(max_length=200)
+    min_marks           = models.FloatField(default=0)
+    max_marks           = models.FloatField(default=0)
 
     def __str__(self):
         return 'Ques_{0}: SubQues_{1}'.format(self.parent_ques.sno, self.sno)
@@ -187,7 +189,39 @@ class ProbeSubmission(models.Model):
     probe_grader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='probes_to_check', blank=True, null=True)
     true_score = models.FloatField(default=0)
 
+class ProbeSubmissionQuestion(models.Model):
+    probe_ques_id = models.AutoField(primary_key=True)
+    parent_probe_sub = models.ForeignKey(ProbeSubmission, on_delete=models.CASCADE, related_name='probe_questions')
+    parent_ques = models.OneToOneField(QuestionSubmission, on_delete=models.CASCADE, related_name='probe_counterpart')
+    true_score = models.FloatField(default=0)
 
+class ProbeSubmissionQuestionComment(models.Model):
+    probe_ques_com_id = models.AutoField(primary_key=True)
+    parent_ques = models.OneToOneField(ProbeSubmissionQuestion, on_delete=models.CASCADE, related_name='comment')
+    comment = models.TextField()
+    marks = models.FloatField(default=0)
+    
+
+class ProbeSubmissionSubquestion(models.Model):
+    probe_subques_id = models.AutoField(primary_key=True)
+    parent_probe_ques = models.ForeignKey(ProbeSubmissionQuestion, on_delete=models.CASCADE, related_name='probe_subquestions')
+    true_score = models.FloatField(default=0)
+
+class ProbeSubmissionSubquestionComment(models.Model):
+    probe_subques_com_id = models.AutoField(primary_key=True)
+    parent_subques = models.OneToOneField(ProbeSubmissionSubquestion, on_delete=models.CASCADE, related_name='sub_comment')
+    sub_comment = models.TextField
+    marks = models.FloatField(default=0)
+
+class ProbeRubric(models.Model):
+    probe_rub_id = models.AutoField(primary_key=True)
+    rubric = models.OneToOneField(GlobalRubric, on_delete=models.CASCADE, related_name='probe_rubric')
+    selected = models.BooleanField(default=False)
+
+class ProbeSubrubric(models.Model):
+    probe_subrub_id = models.AutoField(primary_key=True)
+    sub_rubric = models.OneToOneField(GlobalSubrubric, on_delete=models.CASCADE, related_name='probe_subrubric')
+    selected = models.BooleanField(default=False)
 
 
 

@@ -53,11 +53,29 @@ def save_assign_peergrading_profile(sender, instance, **kwargs):
 @receiver(post_save, sender=Question)
 def create_question_default_global_rubric(sender, instance, created, **kwargs):
     if created:
-        GlobalRubric.objects.create(question=instance, description='Correct', marks=instance.marks)
-        GlobalRubric.objects.create(question=instance, description='Incorrect', marks=0)
+        GlobalRubric.objects.create(question=instance, description='Correct', marks=instance.max_marks)
+        GlobalRubric.objects.create(question=instance, description='Incorrect', marks=instance.min_marks)
 
 @receiver(post_save, sender=SubQuestion)
 def create_subquestion_default_global_rubric(sender, instance, created, **kwargs):
     if created:
-        GlobalSubrubric.objects.create(sub_question=instance, description='Correct', marks=instance.marks)
-        GlobalSubrubric.objects.create(sub_question=instance, description='Incorrect', marks=0)
+        GlobalSubrubric.objects.create(sub_question=instance, description='Correct', marks=instance.max_marks)
+        GlobalSubrubric.objects.create(sub_question=instance, description='Incorrect', marks=instance.min_marks)
+
+@receiver(post_save, sender=GlobalRubric)
+def create_probe_rubric(sender, instance, created, **kwargs):
+    if created:
+        ProbeRubric.objects.create(rubric=instance)
+
+@receiver(post_save, sender=GlobalSubrubric)
+def create_probe_subrubric(sender, instance, created, **kwargs):
+    if created:
+        ProbeSubrubric.objects.create(sub_rubric=instance)
+
+@receiver(post_save, sender=GlobalRubric)
+def save_probe_rubric(sender, instance, **kwargs):
+        instance.probe_rubric.save()
+
+@receiver(post_save, sender=GlobalSubrubric)
+def save_probe_subrubric(sender, instance, **kwargs):
+        instance.probe_subrubric.save()
