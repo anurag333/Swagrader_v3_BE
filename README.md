@@ -105,3 +105,11 @@ python manage.py createsuperuser
 python manage.py runserver <port>
 
 ```
+bugs-
+#bug- sent probe instead of assign
+#copies not distributed to ta and instructor
+#probe objects not initialised
+# foriegn key not matching   probe_submission.probe_questions->grade probe in
+=>probe = get_object_or_404(
+        assign.assign_submissions.all(), probe_submission__probe_id=probe_id)  (major)
+=> marks not saved in db

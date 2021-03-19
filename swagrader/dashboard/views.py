@@ -21,22 +21,24 @@ class EmailNamespaceListView(generics.ListAPIView):
     serializer_class = EmailNamespaceSerializer
     permission_classes = [permissions.AllowAny]
 
+
 class CourseListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
     # authentication_classes = [authentication.TokenAuthentication]
 
-    def get(self, request, format = None):
+    def get(self, request, format=None):
         inst_courses = request.user.instructed_courses.all()
         stu_courses = request.user.enrolled_courses.all()
         ta_courses = request.user.assisted_courses.all()
 
         buffer_courses = set(chain(inst_courses, stu_courses, ta_courses))
 
-        min_list = CourseSerializer(buffer_courses, many=True, context={'current_user': request.user})
-        
+        min_list = CourseSerializer(buffer_courses, many=True, context={
+                                    'current_user': request.user})
+
         privileges = ['student']
         if request.user.global_instructor_privilege:
-            privileges.append('instructor') 
+            privileges.append('instructor')
         if request.user.global_ta_privilege:
             privileges.append('ta')
 
