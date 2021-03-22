@@ -19,12 +19,13 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from .utility import *
+from rest_framework.renderers import JSONRenderer
 
 
 @login_required
-@api_view(['POST'])
+@api_view(['GET'])
 def close_submissions(request, course_id, assign_id):
-    if request.method == 'POST':
+    if request.method == 'GET':
         try:
             curr_course = Course.objects.get(course_id=course_id)
             curr_assign = curr_course.authored_assignments.get(
@@ -53,9 +54,9 @@ def close_submissions(request, course_id, assign_id):
 
 
 @login_required
-@api_view(['POST'])
+@api_view(['GET'])
 def assignment_publish(request, course_id, assign_id):
-    if request.method == 'POST':
+    if request.method == 'GET':
         try:
             curr_course = Course.objects.get(course_id=course_id)
             curr_assign = curr_course.authored_assignments.get(
@@ -70,19 +71,23 @@ def assignment_publish(request, course_id, assign_id):
             return Response({'message': 'You are not allowed for this operation unless you set the outline.'}, status=status.HTTP_403_FORBIDDEN)
 
         if curr_assign.current_status == 'outline_set':
+            print("$$$$$$$$$$$$$%%%%%%%%%%%%%")
+            print(curr_assign.publish_date, timezone.now(),
+                  curr_assign.submission_deadline)
+            print(curr_assign.publish_date < timezone.now())
             if curr_assign.publish_date <= timezone.now() < curr_assign.submission_deadline:
                 curr_assign.current_status = 'published'
                 curr_assign.published_for_subs = True
                 curr_assign.save()
-                print(curr_assign.status)
+                print(curr_assign.current_status)
                 return Response({'message': 'Assignment published successfully.'}, status=status.HTTP_200_OK)
             return Response({'message': 'Current date is not in range [publish_date, submission_deadline), wait or update the deadline/publish_date.'}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({'message': 'You cannot publish the assignment since it was published already.'}, status=status.HTTP_403_FORBIDDEN)
 
 
-@login_required
-@api_view(['GET', 'POST'])
+@ login_required
+@ api_view(['GET', 'POST'])
 def assignment_outline_detail(request, course_id, assign_id):
     if request.method == 'GET':
         try:
@@ -94,12 +99,12 @@ def assignment_outline_detail(request, course_id, assign_id):
 
         if request.user not in list(chain(curr_course.instructors.all(), curr_course.teaching_assistants.all(), curr_course.students.all())):
             return Response({'message': 'You are not allowed for this operation'}, status=status.HTTP_403_FORBIDDEN)
-
         questions = curr_assign.questions.all()
         serializer = QuestionSerializer(questions, many=True)
         return Response(serializer.data)
 
     if request.method == 'POST':
+        print("###############################")
         print(request.data)
         try:
             curr_course = Course.objects.get(course_id=course_id)
@@ -374,19 +379,21 @@ class GradingMethodSelection(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, course_id, assign_id):
+        print("$$$$$$$$$$$$")
+        print(request.data)
         course = get_object_or_404(Course, course_id=course_id)
         assign = get_object_or_404(
-            Course.authored_assignments.all(), assign_id=assign_id)
+            course.authored_assignments.all(), assign_id=assign_id)
         if not request.user in course.instructors.all():
             return Response({'message': 'only instructors are allowed for the operation'}, status=status.HTTP_403_FORBIDDEN)
 
-        if assign.curr_status in ['subs_closed', 'method_selected']:
+        if assign.current_status in ['subs_closed', 'method_selected']:
             method = request.data.get('method', None)
             if method == None or not method in ['pg', 'ng']:
                 return Response({'message': 'Bad input'}, status=400)
 
             assign.grading_methodology = method
-            assign.curr_status = 'method_selected'
+            assign.current_status = 'method_selected'
             assign.save()
             return Response({'message': 'Method selected for grading.'}, status=200)
         else:
@@ -398,7 +405,7 @@ class GradingMethodSelection(views.APIView):
 def stage_grading(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     FLOW = ['set_outline', 'outline_set', 'published',
             'subs_closed', 'method_selected', 'grading_started']
     User = get_user_model()
@@ -479,39 +486,39 @@ def stage_grading(request, course_id, assign_id):
 def set_number_of_probes(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     FLOW = ['set_outline', 'outline_set', 'published',
             'subs_closed', 'method_selected', 'grading_started']
     User = get_user_model()
     if request.method == 'POST':
         if assign.current_status == 'method_selected':
             try:
-                probes = request.data.get('probes')
+                probes = int(request.data.get('probes'))
                 if assign.assign_submissions.all().count() < probes:
                     return Response({'message': 'This assign does not have that many submissions'}, status=400)
                 assign.assignment_peergrading_profile.n_probes = probes
                 assign.assignment_peergrading_profile.save()
+                return Response({'message': "n_probes set"})
             except:
                 return Response({'message': 'probes key not passed'}, status=400)
-        return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
+        else:
+            return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
 
 
 @login_required
-@api_view(['POST'])
+@api_view(['GET'])
 def start_grading(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
-
     if assign.current_status == 'method_selected':
         # select probes by some logic, we define it later here, probes would be selected
         # Probe is more like a submission, Probe will have a grader, marks, rubrics
         if assign.grading_methodology == "pg":
-
-            subs = assign.assign_submissions.all()
-            probes = get_probes(subs, method='random')
+            outline_with_rubrics = get_outline_with_rubrics(assign)
+            probes = get_probes(outline_with_rubrics, assign, 'random')
             if probes:
                 assign.current_status == 'grading_started'
                 assign.save()
@@ -527,92 +534,61 @@ def start_grading(request, course_id, assign_id):
     else:
         return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
 
+##############################################################################################
+
 
 @login_required
 @api_view(['GET', 'POST'])
-def grade_probe_instructor(request, course_id, assign_id, probe_id):
+def global_rubric_create(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
-
+        course.authored_assignments.all(), assign_id=assign_id)
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
 
-    if assign.current_status == 'probes_selected':
-        return Response({'message': 'This step is not activated'}, status=403)
-
-    probe = get_object_or_404(
-        assign.assign_submissions.all(), probe_submission__probe_id=probe_id)
-    if request.method == 'GET':
-        # give back the details for the assign, which is essentially the outline, and the global rubrics which are set for this assign
-        outline_with_rubrics = get_outline_with_rubrics(assign)  #bug- sent probe instead of assign
-        return Response(outline_with_rubrics, status=200)
-
-    elif request.method == 'POST':
-        # payload will be like
-        sample_payload = {
-            "questions": [
-                {
-                    "qid": 23,
-                    "max_marks": 30,
-                    "min_marks": 0,
-                    "rubrics": [
-                        {
-                            "marks": 10,
-                            "description": "Step 1 is correct",
-                            "selected": True
-                        }
-                    ],
-                    "comment": {
-                        "marks": None,
-                        "description": None,
-                    },
-                    "sub_questions": [
-                        {
-                            "sqid": 1,
-                            "max_marks": 10,
-                            "min_marks": 0,
-                            "sub_rubrics": [
-                                {
-                                    "marks": 10,
-                                    "description": "Step 1 is correct",
-                                    "selected": False,
-                                }
-                            ],
-                            "comment": {
-                                "marks": None,
-                                "description": None,
+    if assign.current_status != 'set_outline':
+        outline_with_rubrics = get_outline_with_rubrics(assign)
+        if request.method == 'GET':
+            return Response(outline_with_rubrics, status=200)
+        if request.method == 'POST':
+            sample_payload = {
+                "questions": [
+                    {
+                        "qid": 23,
+                        "max_marks": 30,
+                        "min_marks": 0,
+                        "rubrics": [
+                            {
+                                "marks": 10,
+                                "description": "Step 1 is correct",
                             }
-                        }
-                    ]
-                }
-            ]
-        }
-        questions = request.DATA.get("questions", None)
-
-        # check for payload sanitization
-        sanitization_status = sanitization_check(assign, questions)
-
-        if sanitization_status == 'ok':
+                        ],
+                        "sub_questions": [
+                            {
+                                "sqid": 1,
+                                "max_marks": 10,
+                                "min_marks": 0,
+                                "sub_rubrics": [
+                                    {
+                                        "marks": 10,
+                                        "description": "Step 1 is correct",
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+            questions = request.data.get("questions", None)
+            # add sanatization check for questions
             for q in questions:
                 qid = q['qid']
                 rubrics = q['rubrics']
                 max_marks = q['max_marks']
                 min_marks = q['min_marks']
                 sub_questions = q['sub_questions']
-                comment = q['comment']
                 ques = assign.questions.get(ques_id=qid)
 
-                if comment['marks'] != None:
-                    # foriegn key not matching   probe_submission.probe_questions
-                    probe_qsub = get_object_or_404(
-                        probe.probe_questions.all(), parent_ques__ques_id=qid)
-                    try:
-                        probe_qsub.comment.delete()
-                        ProbeSubmissionQuestionComment.objects.create(
-                            parent_ques=probe_qsub, marks=comment['marks'], comment=comment['description'])
-                    except:
-                        return Response({"message": "Error in deletion of comment"}, status=500)
                 if rubrics:
                     try:
                         ques.g_rubrics.all().delete()
@@ -621,17 +597,16 @@ def grade_probe_instructor(request, course_id, assign_id, probe_id):
                             marks = r_data.get('marks', None)
                             rub = GlobalRubric.objects.create(
                                 description=desc, marks=marks, question=ques)
-
-                            if r_data['selected']:
-                                rub.probe_rubric.selected = True
-                                rub.save()
                     except:
                         return Response({"message": "Error in deletion of previous rubrics"}, status=500)
                 else:
-                    GlobalRubric.objects.create(
-                        description="Correct", marks=max_marks, question=ques)
-                    GlobalRubric.objects.create(
-                        description="Incorrect", marks=min_marks, question=ques)
+                    try:
+                        ques.g_rubrics.all().delete()
+                    except:
+                        GlobalRubric.objects.create(
+                            description="Correct", marks=max_marks, question=ques)
+                        GlobalRubric.objects.create(
+                            description="Incorrect", marks=min_marks, question=ques)
 
                 for sq in sub_questions:
                     sqid = sq['sqid']
@@ -647,9 +622,6 @@ def grade_probe_instructor(request, course_id, assign_id, probe_id):
                                 marks = sr_data.get('marks', None)
                                 srub = GlobalSubrubric.objects.create(
                                     description=desc, marks=marks, sub_question=sub_ques)
-                                if sr_data['selected']:
-                                    srub.probe_subrubric.selected = True
-                                    srub.save()
                         except:
                             return Response({"message": "Error in deletion of previous sub_rubrics"}, status=500)
                     else:
@@ -657,40 +629,98 @@ def grade_probe_instructor(request, course_id, assign_id, probe_id):
                             description="Correct", marks=sq_max_marks, sub_question=ques)
                         GlobalSubrubric.objects.create(
                             description="Incorrect", marks=sq_min_marks, sub_question=ques)
-        else:
-            return Response({"message": sanitization_status}, status=400)
+            assign.current_status = 'rubric_set'
+            assign.save()
+            print(assign.current_status)
+            return Response({'message': 'rubric_set'})
+
+    else:
+        return Response({'message': f'Not possible, current status of assign is {assign.current_status}'})
 
 
+@login_required
+@api_view(['GET'])
+def get_probes_to_check(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    if not request.user in chain(course.teaching_assistants.all(), course.instructors.all()):
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor/ta'}, status=403)
+    if assign.current_status not in ['rubric_set', 'papers_distributed']:
+        return Response({'message': 'This step is not activated'}, status=403)
+    probes_to_check = request.user.probes_to_check.all()
+    probe_ids = []
+    for p in probes_to_check:
+        probe_ids.append(p.probe_id)
+    return Response(probe_ids, status=200)
 
-
-##############################################################################################
 
 @login_required
 @api_view(['GET', 'POST'])
-def grade_probe_ta(request, course_id, assign_id, probe_id):
+def grade_probe(request, course_id, assign_id, probe_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
+    if not request.user in chain(course.teaching_assistants.all(), course.instructors.all()):
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor/ta'}, status=403)
 
-    if not request.user in course.teaching_assistants.all():
-        return Response({'message': 'You are not allowed for this operation because you are not an teaching assistant'}, status=403)
-    # probe_selected which status
-    if assign.current_status == 'probes_selected':
+    if assign.current_status not in ['rubric_set', 'papers_distributed']:
         return Response({'message': 'This step is not activated'}, status=403)
-
     probe = get_object_or_404(
-        assign.assign_submissions.all(), probe_submission__probe_id=probe_id)
+        ProbeSubmission, probe_id=probe_id)
+    if probe.probe_grader != request.user:
+        return Response({'message': 'this probe id does not belong to you'})
     if request.method == 'GET':
         # give back the details for the assign, which is essentially the outline, and the global rubrics which are set for this assign
-        outline_with_rubrics = get_outline_with_rubrics(assign)   
+        outline_with_rubrics = get_outline_with_rubrics(
+            assign)  # bug- sent probe instead of assign
         return Response(outline_with_rubrics, status=200)
 
     elif request.method == 'POST':
-        questions = request.DATA.get("questions", None)
+        # payload will be like
+        sample_payload = {
+            "questions": [
+                {
+                    "qid": 23,
+                    "max_marks": 30,
+                    "min_marks": 0,
+                    "rubrics": [
+                        {
+                            "rubric_id": 1,
+                            "marks": 10,
+                            "description": "Step 1 is correct"
+                        }
+                    ],
+                    "comment": {
+                        "marks": None,
+                        "description": None,
+                    },
+                    "sub_questions": [
+                        {
+                            "sqid": 1,
+                            "max_marks": 10,
+                            "min_marks": 0,
+                            "sub_rubrics": [
+                                {
+                                    "sub_rubric_id": 1,
+                                    "marks": 10,
+                                    "description": "Step 1 is correct",
+                                }
+                            ],
+                            "comment": {
+                                "marks": None,
+                                "description": None,
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        questions = request.data.get("questions", None)
 
         # check for payload sanitization
-        sanitization_status = sanitization_check(assign, questions)
-
+        # sanitization_status = sanitization_check(assign, questions)
+        sanitization_status = 'ok'
         if sanitization_status == 'ok':
             for q in questions:
                 qid = q['qid']
@@ -700,25 +730,52 @@ def grade_probe_ta(request, course_id, assign_id, probe_id):
                 sub_questions = q['sub_questions']
                 comment = q['comment']
                 ques = assign.questions.get(ques_id=qid)
-
+                cur_ques = Question.objects.get(ques_id=q['qid'])
+                sub = probe.parent_sub
+                ques_sub = sub.submissions.all().get(question=cur_ques)
+                probe_qsub = get_object_or_404(
+                    probe.probe_questions.all(), parent_ques=ques_sub)
                 if comment['marks'] != None:
                     # foriegn key not matching   probe_submission.probe_questions
-                    probe_qsub = get_object_or_404(
-                        probe.probe_questions.all(), parent_ques__ques_id=qid)
+
                     try:
                         probe_qsub.comment.delete()
                         ProbeSubmissionQuestionComment.objects.create(
                             parent_ques=probe_qsub, marks=comment['marks'], comment=comment['description'])
                     except:
                         return Response({"message": "Error in deletion of comment"}, status=500)
-                # deleted rubric part
+                if rubrics:
+                    try:
+                        for r_data in rubrics:
+                            desc = r_data.get('description', None)
+                            marks = r_data.get('marks', None)
+                            r_id = r_data.get('rubric_id')
+                            probe_qsub.rubric = GlobalRubric.objects.get(
+                                rubric_id=r_id)
+                            probe_qsub.save()
+                    except:
+                        return Response({"message": "rubric didn't linked"}, status=500)
 
                 for sq in sub_questions:
                     sqid = sq['sqid']
                     sub_rubrics = sq['sub_rubrics']
                     sq_max_marks = sq['max_marks']
                     sq_min_marks = sq['min_marks']
-                    # deleted subrubric part
+                    if sub_rubrics:
+                        sub_ques = ques.sub_questions.get(sques_id=sqid)
+                        try:
+                            for sr_data in sub_rubrics:
+                                desc = sr_data.get('description', None)
+                                marks = sr_data.get('marks', None)
+                                sub_rubric_id = sr_data.get('sub_rubric_id')
+                                probe_sq_sub = probe_qsub.probe_subquestions.get(
+                                    parent_probe_ques=probe_qsub, parent_sub_ques=sqid)
+                                probe_sq_sub.sub_rubric = GlobalSubrubric.objects.get(
+                                    sub_rubric_id=sub_rubric_id)
+                                probe_sq_sub.save()
+                        except:
+                            return Response({"message": "sub-rubric didn't attatch"}, status=500)
+                    return Response({"message": "grades submitted"}, status=200)
         else:
             return Response({"message": sanitization_status}, status=400)
 
@@ -732,55 +789,70 @@ def start_peergrading(request, course_id, assign_id):
     # Lets try to create a mock example for this and later we will essentially do this for all the questions (np)
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     FLOW = ['set_outline', 'outline_set', 'published',
             'subs_closed', 'method_selected', 'grading_started']
     User = get_user_model()
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
 
-    if assign.current_status != 'method_selected':
-        return Response({'message': 'Grading method must be selected'}, status=403)
+    if assign.current_status != 'rubric_set':
+        return Response({'message': 'rubric must be set'}, status=403)
 
-    pg_profile = assign.assignment_peergrading_profile
+    pg_profile = assign.assignment_peergrading_profile.all()[0]
     peerdist = pg_profile.peerdist
     students = pg_profile.peergraders.all()
     papers = assign.assign_submissions.all()
     probe_objects = ProbeSubmission.objects.all()
     probes = []
     for p in probe_objects:
-        probes.append(p.sub_id)
-
+        probes.append(p.parent_sub)
+    print('$$$$$$$$$$$$$$$$$', probes)
     P_papers = []
     NP_papers = []
     for p in papers:
-        if p.sub_id in probes:
+        if p in probes:
             P_papers.append(p)
         else:
             NP_papers.append(p)
 
     P_students = []
     NP_students = []
-
     for p in papers:
-        if p.sub_id in probes:
+        if p in probes:
             P_students.append(
-                SwagraderUser.objects.all().filter(email=p.author))
+                get_object_or_404(User, email=p.author.email))
         else:
             NP_students.append(
-                SwagraderUser.objects.all().filter(email=p.author))
+                get_object_or_404(User, email=p.author.email))
     # order of paper and students is maintained since we used same if condition in loops above
+    print(papers)
+    print('p_papers', P_papers)
+    print('np_papers', NP_papers)
     student_paper_pair = match_making(
         P_papers, NP_papers, P_students, NP_students, peerdist)
 
     for sp in student_paper_pair:
-        PeerGraders.objects.create(Student=sp[0], paper=sp[1])
+        PeerGraders.objects.create(student=sp[0], paper=sp[1])
+        print(sp[0], sp[1])
 
     # create peersubmissionquestion objects for all students,paper pairs
+    outline_with_rubrics = get_outline_with_rubrics(assign)
+    for pg in PeerGraders.objects.all():
+        for q in outline_with_rubrics:
+            cur_ques = Question.objects.all().get(ques_id=q['qid'])
+            sub = pg.paper
+            ques_sub = sub.submissions.all().get(question=cur_ques)
+            psq = PeerSubmissionQuestion.objects.create(
+                parent_ques=ques_sub, parent_tuple=pg)
+            for sq in q['sub_questions']:
+                sub_ques = SubQuestion.objects.get(sques_id=sq['sqid'])
+                pssq = PeerSubmissionSubquestion.objects.create(
+                    parent_peer_ques=psq, parent_sub_ques=sub_ques)
 
-    assign.current_status = 'grading_started'
+    assign.current_status = 'papers_distributed'
     assign.save()
-    return Response({'message': 'Grading started'}, status=200)
+    return Response({'message': 'Peer - Grading started'}, status=200)
 
 
 @login_required
@@ -788,52 +860,57 @@ def start_peergrading(request, course_id, assign_id):
 def get_peer_papers(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     if not request.user in course.students.all():
         return Response({'message': 'You are not allowed for this operation because you are not an student'}, status=403)
     if request.method == 'GET':
-        papers = PeerGraders.objects.all().filter(email=request.user.email)
+        papers = PeerGraders.objects.all().filter(student=request.user)
         papers_of_current_assign = []
         for p in papers:
-            if p.assignment.assign_id == assign.assign_id:  # check if fk return obj or attribute
+            if p.paper.assignment.assign_id == assign.assign_id:  # check if fk return obj or attribute
                 papers_of_current_assign.append(p)
         if len(papers_of_current_assign) == 0:
             return Response({'message': 'no papers found'}, status=403)
-        return Response(papers_of_current_assign, status=200)
-
-
+        res = []
+        for paper in papers_of_current_assign:
+            serializer = PeerGradersSerializer(paper)
+            content = JSONRenderer().render(serializer.data)
+            res.append(content)
+        return Response(res, status=200)
 
 
 @login_required
 @api_view(['GET', 'POST'])
-def grade_peer(request, course_id, assign_id, peer_id,paper_id):
+def grade_peer(request, course_id, assign_id, paper_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
 
     if not request.user in course.students.all():
         return Response({'message': 'You are not allowed for this operation because you are not an student'}, status=403)
     # probe_selected which status
-    if assign.current_status != 'grading_started':
+    if assign.current_status != 'papers_distributed':
         return Response({'message': 'This step is not activated'}, status=403)
 
+    cur_paper = AssignmentSubmission.objects.get(sub_id=paper_id)
+    pg = PeerGraders.objects.all().get(student=request.user, paper=cur_paper)
     peer_grader_obj = get_object_or_404(
-        PeerGraders.objects.all(), student=peer_id,paper = paper_id)  #check how to give pk
+        PeerGraders.objects.all(), student=request.user, paper=cur_paper)  # check how to give pk
     if request.method == 'GET':
         # give back the details for the assign, which is essentially the outline, and the global rubrics which are set for this assign
         outline_with_rubrics = get_outline_with_rubrics(assign)
         return Response(outline_with_rubrics, status=200)
 
     elif request.method == 'POST':
-        pg_profile = assign.assignment_peergrading_profile
+        pg_profile = assign.assignment_peergrading_profile.all()[0]
         # user must not cross deadline
-        if pg_profile.peergrading_deadline < datetime.datetime.now():
+        if pg_profile.peergrading_deadline < timezone.now():
             return Response({'message': 'deadline over'})
-        questions = request.DATA.get("questions", None)
+        questions = request.data.get("questions", None)
 
         # check for payload sanitization
-        sanitization_status = sanitization_check(assign, questions)
-
+        # sanitization_status = sanitization_check(assign, questions)
+        sanitization_status = 'ok'
         if sanitization_status == 'ok':
             for q in questions:
                 qid = q['qid']
@@ -841,18 +918,45 @@ def grade_peer(request, course_id, assign_id, peer_id,paper_id):
                 max_marks = q['max_marks']
                 min_marks = q['min_marks']
                 sub_questions = q['sub_questions']
-                
-                ques = assign.questions.get(ques_id=qid)
+                ques = Question.objects.get(ques_id=qid)
+                cur_ques = Question.objects.get(ques_id=qid)
+                ques_sub = cur_paper.submissions.all().get(question=cur_ques)
+                peer_qsub = get_object_or_404(
+                    pg.question_submissions.all(), parent_ques=ques_sub)
+                if rubrics:
+                    try:
+                        for r_data in rubrics:
+                            desc = r_data.get('description', None)
+                            marks = r_data.get('marks', None)
+                            r_id = r_data.get('rubric_id')
+                            peer_qsub.rubric = GlobalRubric.objects.get(
+                                rubric_id=r_id)
+                            peer_qsub.save()
+                    except:
+                        return Response({"message": "rubric didn't linked"}, status=500)
 
                 for sq in sub_questions:
                     sqid = sq['sqid']
                     sub_rubrics = sq['sub_rubrics']
                     sq_max_marks = sq['max_marks']
                     sq_min_marks = sq['min_marks']
-                    # deleted subrubric part
+                    if sub_rubrics:
+                        sub_ques = ques.sub_questions.get(sques_id=sqid)
+                        try:
+                            for sr_data in sub_rubrics:
+                                desc = sr_data.get('description', None)
+                                marks = sr_data.get('marks', None)
+                                sub_rubric_id = sr_data.get('sub_rubric_id')
+                                peer_sq_sub = peer_qsub.peer_subquestions.get(
+                                    parent_sub_ques=sub_ques)
+                                peer_sq_sub.sub_rubric = GlobalSubrubric.objects.get(
+                                    sub_rubric_id=sub_rubric_id)
+                                peer_sq_sub.save()
+                        except:
+                            return Response({"message": "sub-rubric didn't attatch"}, status=500)
+                    return Response({"message": "grades submitted"}, status=200)
         else:
             return Response({"message": sanitization_status}, status=400)
-
 
 
 @login_required
@@ -891,16 +995,13 @@ def calculate_bonus_and_scores(request, course_id, assign_id):
     for p in papers:
         if p.sub_id in probes:
             P_students.append(
-                SwagraderUser.objects.all().filter(email=p.author))
+                User.objects.all().get(email=p.author))
         else:
             NP_students.append(
-                SwagraderUser.objects.all().filter(email=p.author))
-
+                User.objects.all().get(email=p.author))
 
     questions = assign.questions.all()
 
-
     for ques in questions:
         for stu in students:
-            
-
+            pass

@@ -28,11 +28,17 @@ urlpatterns = [
          assignment_outline_detail),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/publish',
          assignment_publish),
+    # student
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/questions',
          QuestionListView.as_view()),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/submit',
          submit_assignment),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/close-submissions',
+         close_submissions),
 
+    # student
+    path('student/courses/<uuid:course_id>',
+         CourseDetailStudentView.as_view()),
     # grading
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/grading-method-selection',
          GradingMethodSelection.as_view()),
@@ -40,6 +46,17 @@ urlpatterns = [
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/set-np',
          set_number_of_probes),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/start-grading', start_grading),
-    path('courses/<uuid:course_id>/assignments/<int:assign_id>/create-rubrics',
-         grade_probe_instructor),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/create-rubric',
+         global_rubric_create),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/start-peergrading',
+         start_peergrading),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/probes-to-check',
+         get_probes_to_check),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/grade-probe/<int:probe_id>',
+         grade_probe),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/peer-papers-to-check',
+         get_peer_papers),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/grade-peer/<int:paper_id>',
+         grade_peer),
+
 ]

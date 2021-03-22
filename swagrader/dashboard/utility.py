@@ -1,19 +1,55 @@
 from .models import *
 import random
+from django.shortcuts import get_object_or_404
+from django.http import Http404
+from itertools import chain
+from django.contrib.auth import get_user_model
 
 
-def get_probes(subs, strategy='random'):
+def get_probes(outline_with_rubrics, assign, strategy='random'):
+    subs = assign.assign_submissions.all()
+    User = get_user_model()
     if strategy == 'random':
         sub_ids = set()
         for sub in subs:
             sub_ids.add(sub.sub_id)
+        print(assign.assignment_peergrading_profile.all()[0].n_probes)
+        print(assign.assignment_peergrading_profile.all()[0].peerdist)
         probes = []
-        for _ in range(assign.assignment_peergrading_profile.n_probes):
+        user_ids = set()
+        for user in chain(assign.assignment_peergrading_profile.all()[0].instructor_graders.all(), assign.assignment_peergrading_profile.all()[0].ta_graders.all()):
+            user_ids.add(user.email)
+        for _ in range(assign.assignment_peergrading_profile.all()[0].n_probes):
             id = random.choice(tuple(sub_ids))
-            sub = subs.objects.get(sub_id=id)
-            probe = ProbeSubmission.objects.create(parent_sub=sub)
+            # right now we are choosing random id to give probe and not removing from set
+            user_id = random.choice(tuple(user_ids))
+            sub = get_object_or_404(assign.assign_submissions.all(), sub_id=id)
+            grader = get_object_or_404(User, email=user_id)
+            print(sub)
+            print(grader)
+            try:
+                probe = ProbeSubmission.objects.create(
+                    parent_sub=sub, probe_grader=grader)
+            except:
+                print(
+                    '########################### probeSubmission object already exists#################################################')
+                raise Http404
             sub_ids.remove(id)
             probes.append({'probe_id': probe.probe_id})
+            for q in outline_with_rubrics:
+                cur_ques = Question.objects.get(ques_id=q['qid'])
+                ques_sub = sub.submissions.all().get(question=cur_ques)
+                ques = ProbeSubmissionQuestion.objects.create(
+                    parent_probe_sub=probe, parent_ques=ques_sub)
+                ques_com = ProbeSubmissionQuestionComment.objects.create(
+                    parent_ques=ques)
+
+                for sq in q['sub_questions']:
+                    sub_ques = SubQuestion.objects.get(sques_id=sq['sqid'])
+                    sub_ques = ProbeSubmissionSubquestion.objects.create(
+                        parent_probe_ques=ques, parent_sub_ques=sub_ques)
+                    sub_ques_com = ProbeSubmissionSubquestionComment.objects.create(
+                        parent_subques=sub_ques)
 
         return probes
 
@@ -24,7 +60,7 @@ def get_outline_with_rubrics(assign):
 
     for q in assign_questions:
         ques = {
-            "qid": q.qid,
+            "qid": q.ques_id,
             "max_marks": q.max_marks,
             "min_marks": q.min_marks,
             "rubrics": [],
@@ -35,9 +71,9 @@ def get_outline_with_rubrics(assign):
 
         for gr in g_rubrics:
             g_rub = {
+                "rubric_id": gr.rubric_id,
                 "marks": gr.marks,
                 "description": gr.description,
-                "selected": gr.probe_rubric.selected,
             }
             ques["rubrics"].append(g_rub)
 
@@ -51,9 +87,9 @@ def get_outline_with_rubrics(assign):
             g_subrubrics = sq.g_subrubrics.all()
             for gsr in g_subrubrics:
                 gs_rub = {
+                    "sub_rubric_id": gsr.sub_rubric_id,
                     "marks": gsr.marks,
                     "description": gsr.description,
-                    "selected": gsr.probe_subrubric.selected
                 }
                 sub_ques["sub_rubrics"].append(gs_rub)
 
@@ -168,7 +204,7 @@ def sanitization_check(assign, test_questions):
     # [VAL_CHECK_2] All questions should be in test questions
     for ques in questions:
         found = False
-        for test_question in test_questionss:
+        for test_question in test_questions:
             if ques['qid'] == test_question['qid'] and \
                     ques['max_marks'] == test_question['max_marks'] and \
                     ques['min_marks'] == test_question['min_marks']:
@@ -208,7 +244,7 @@ def match_making(P_papers, NP_papers, P_students, NP_students, peerdist):
             cur = (i + j + 1) % np_len
             match.append((NP_students[i], NP_papers[cur]))
 
-    counter = 0
+    counter = int(0)
     for i in range(p_len):
         for j in range((peerdist+1)//2):
             cur = (counter) % np_len

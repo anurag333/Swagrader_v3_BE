@@ -113,3 +113,20 @@ bugs-
 =>probe = get_object_or_404(
         assign.assign_submissions.all(), probe_submission__probe_id=probe_id)  (major)
 => marks not saved in db
+set no of probes => corrected if else condition, added succes response
+get_probes => argument not given, fixed function
+
+SMALL ERRORS, 
+grading method selection = Course.authoredassignments.all() to  course.authoredassignment.all(), curr_status to current_status
+submit assignment = ques_id to qid  
+added subquestion feild in subrubric
+
+
+
+TODO: add sanatization for rubric creation,grade_probe->sanatization
+add roaster management
+distribution of probes to ta and instructors can be improved
+add step by step mandation
+
+
+

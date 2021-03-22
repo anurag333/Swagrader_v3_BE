@@ -90,7 +90,7 @@ class Assignment(models.Model):
     average = models.FloatField(default=0)
     regrading_requests = models.BooleanField(default=True)
     grading_methodology = models.CharField(max_length=2, choices=(
-        ('pg', 'Peergrading'), ('ng', 'Normal grading')), default='ng')
+        ('pg', 'Peergrading'), ('ng', 'Normal grading')), default='pg')
     graded = models.BooleanField(default=False)
     current_status = models.CharField(max_length=20, choices=(
         ('set_outline', 'Set outline'),
@@ -98,7 +98,10 @@ class Assignment(models.Model):
         ('published', 'close submissions'),
         ('subs_closed', 'Select grading method'),
         ('method_selected', 'Stage for grading'),
-        ('started', 'Grading Started')
+        ('grading_started', 'Grading Started'),
+        ('rubric_set', 'start probe grading'),
+        ('papers_distributed', 'start peergrading'),
+        ('grading_ended', 'assignment finished')
     ), default='set_outline')
 
     def __str__(self):
@@ -124,7 +127,7 @@ class AssignmentGradingProfile(models.Model):
 
 class AssignmentPeergradingProfile(models.Model):
     # alpha
-    assignment = models.OneToOneField(
+    assignment = models.ForeignKey(
         Assignment, on_delete=models.CASCADE, related_name="assignment_peergrading_profile")
     param_mu = models.FloatField(
         help_text='Parameter to be set as per the TRUPEQA algorithm', default=16.234)
@@ -132,8 +135,8 @@ class AssignmentPeergradingProfile(models.Model):
         help_text='Parameter to be set as per the TRUPEQA algorithm', default=1.234)
     peerdist = models.IntegerField(
         default=6, help_text='This is the number of copies that will be distributed to peers.')
-    probing_deadline = models.DateField(null=True, blank=True)
-    peergrading_deadline = models.DateField(null=True, blank=True)
+    probing_deadline = models.DateTimeField(null=True, blank=True)
+    peergrading_deadline = models.DateTimeField(null=True, blank=True)
     n_probes = models.IntegerField(
         default=20, help_text='These are the number of probes you want to set for this assignment.')
 
@@ -232,7 +235,7 @@ class GlobalSubrubric(models.Model):
 
 class ProbeSubmission(models.Model):
     probe_id = models.BigAutoField(primary_key=True)
-    parent_sub = models.OneToOneField(
+    parent_sub = models.ForeignKey(
         AssignmentSubmission, on_delete=models.CASCADE, related_name='probe_submission')
     probe_grader = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='probes_to_check', blank=True, null=True)
@@ -246,7 +249,7 @@ class ProbeSubmissionQuestion(models.Model):
     parent_ques = models.OneToOneField(
         QuestionSubmission, on_delete=models.CASCADE, related_name='probe_counterpart')
     rubric = models.ForeignKey(
-        GlobalRubric, on_delete=models.CASCADE, related_name='global_rubric', default=None)
+        GlobalRubric, on_delete=models.CASCADE, related_name='global_rubric', null=True, blank=True)
     # true_score = models.FloatField(default=0)
 
 
@@ -263,7 +266,9 @@ class ProbeSubmissionSubquestion(models.Model):
     parent_probe_ques = models.ForeignKey(
         ProbeSubmissionQuestion, on_delete=models.CASCADE, related_name='probe_subquestions')
     sub_rubric = models.ForeignKey(
-        GlobalSubrubric, on_delete=models.CASCADE, related_name='global_sub_rubric', default=None)
+        GlobalSubrubric, on_delete=models.CASCADE, related_name='global_sub_rubric',  null=True, blank=True)
+    parent_sub_ques = models.ForeignKey(
+        SubQuestion, on_delete=models.CASCADE, null=True, blank=True)
     # true_score = models.FloatField(default=0)
 
 
@@ -304,10 +309,10 @@ class PeerGraders(models.Model):
 
 class PeerSubmissionQuestion(models.Model):
     peer_ques_id = models.AutoField(primary_key=True)
-    parent_ques = models.OneToOneField(
+    parent_ques = models.ForeignKey(
         QuestionSubmission, on_delete=models.CASCADE, related_name='peer_counterpart')
     rubric = models.ForeignKey(
-        GlobalRubric, on_delete=models.CASCADE, related_name='peer_rubric', default=None)
+        GlobalRubric, on_delete=models.CASCADE, related_name='peer_rubric', default=None, null=True, blank=True)
     parent_tuple = models.ForeignKey(
         PeerGraders, on_delete=models.CASCADE, related_name='question_submissions')
 
@@ -317,8 +322,9 @@ class PeerSubmissionSubquestion(models.Model):
     parent_peer_ques = models.ForeignKey(
         PeerSubmissionQuestion, on_delete=models.CASCADE, related_name='peer_subquestions')
     sub_rubric = models.ForeignKey(
-        GlobalSubrubric, on_delete=models.CASCADE, related_name='peer_sub_rubric', default=None)
-
+        GlobalSubrubric, on_delete=models.CASCADE, related_name='peer_sub_rubric', default=None, null=True, blank=True)
+    parent_sub_ques = models.ForeignKey(
+        SubQuestion, on_delete=models.CASCADE, null=True, blank=True)
 
 class Marks(models.Model):
     m_id = models.AutoField(primary_key=True)
