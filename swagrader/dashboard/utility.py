@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from itertools import chain
 from django.contrib.auth import get_user_model
+import numpy as np
 
 
 def get_probes(outline_with_rubrics, assign, strategy='random'):
@@ -239,6 +240,7 @@ def match_making(P_papers, NP_papers, P_students, NP_students, peerdist):
 
     match = []
 
+
     for i in range(np_len):
         for j in range((peerdist+1)//2):
             cur = (i + j + 1) % np_len
@@ -252,7 +254,7 @@ def match_making(P_papers, NP_papers, P_students, NP_students, peerdist):
             counter += 1
 
     for i in range(p_len):
-        for j in range((peerdist)//2):  # no +1 because k/2 paper
+        for j in range((peerdist)//2):  # not +1 because k/2 paper
             cur = (i + j + 1) % p_len
             match.append((P_students[i], P_papers[cur]))
     counter = 0

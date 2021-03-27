@@ -1,4 +1,5 @@
 import re
+from django.db.models.query_utils import Q
 from django.shortcuts import render
 from rest_framework import generics, views, permissions, mixins
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from .utility import *
 from rest_framework.renderers import JSONRenderer
+from .trupeqa import *
 
 
 @login_required
@@ -418,7 +420,7 @@ def stage_grading(request, course_id, assign_id):
             action = request.data.get('action', None)
             if role and email and action and role in ['s', 't', 'i'] and action in ['add', 'remove']:
                 if assign.grading_methodology == 'pg':
-                    pg_profile = assign.assignment_peergrading_profile
+                    pg_profile = assign.assignment_peergrading_profile.all()[0]
                     if role == 's':
                         if pg_profile.peergraders.all().filter(email=email).exists():
                             if action == 'add':
@@ -462,7 +464,7 @@ def stage_grading(request, course_id, assign_id):
     else:
         if assign.current_status in FLOW[4:6]:
             if assign.grading_methodology == 'pg':
-                pg_profile = assign.assignment_peergrading_profile
+                pg_profile = assign.assignment_peergrading_profile.all()[0]
                 pg = pg_profile.peergraders.all()
                 tg = pg_profile.ta_graders.all()
                 ig = pg_profile.instructor_graders.all()
@@ -496,8 +498,9 @@ def set_number_of_probes(request, course_id, assign_id):
                 probes = int(request.data.get('probes'))
                 if assign.assign_submissions.all().count() < probes:
                     return Response({'message': 'This assign does not have that many submissions'}, status=400)
-                assign.assignment_peergrading_profile.n_probes = probes
-                assign.assignment_peergrading_profile.save()
+                assign.assignment_peergrading_profile.all()[
+                    0].n_probes = probes
+                assign.assignment_peergrading_profile.all()[0].save()
                 return Response({'message': "n_probes set"})
             except:
                 return Response({'message': 'probes key not passed'}, status=400)
@@ -783,10 +786,6 @@ def grade_probe(request, course_id, assign_id, probe_id):
 @login_required
 @api_view(['GET'])
 def start_peergrading(request, course_id, assign_id):
-    # distribute, create all profiles and rubrics, and action!
-    # The idea is to use the DAGs for the problem and then see what can be done for that for the cause in the problem for that
-    # So for this we will start with the fact that we cannot create a loop < n-k+1 length in this
-    # Lets try to create a mock example for this and later we will essentially do this for all the questions (np)
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
         course.authored_assignments.all(), assign_id=assign_id)
@@ -801,13 +800,13 @@ def start_peergrading(request, course_id, assign_id):
 
     pg_profile = assign.assignment_peergrading_profile.all()[0]
     peerdist = pg_profile.peerdist
-    students = pg_profile.peergraders.all()
-    papers = assign.assign_submissions.all()
+    students = pg_profile.peergraders.all().order_by('email')
+    papers = assign.assign_submissions.all().order_by('sub_id')
     probe_objects = ProbeSubmission.objects.all()
     probes = []
     for p in probe_objects:
         probes.append(p.parent_sub)
-    print('$$$$$$$$$$$$$$$$$', probes)
+    print('$$$$$$$$$$$$$$$$$')
     P_papers = []
     NP_papers = []
     for p in papers:
@@ -826,9 +825,9 @@ def start_peergrading(request, course_id, assign_id):
             NP_students.append(
                 get_object_or_404(User, email=p.author.email))
     # order of paper and students is maintained since we used same if condition in loops above
-    print(papers)
-    print('p_papers', P_papers)
-    print('np_papers', NP_papers)
+    print('probes', probes)
+    print('p_papers', len(P_papers), P_papers)
+    print('np_papers', len(NP_papers), NP_papers)
     student_paper_pair = match_making(
         P_papers, NP_papers, P_students, NP_students, peerdist)
 
@@ -954,7 +953,8 @@ def grade_peer(request, course_id, assign_id, paper_id):
                                 peer_sq_sub.save()
                         except:
                             return Response({"message": "sub-rubric didn't attatch"}, status=500)
-                    return Response({"message": "grades submitted"}, status=200)
+
+                    return Response({"message": peer_sq_sub.peer_subques_id}, status=200)
         else:
             return Response({"message": sanitization_status}, status=400)
 
@@ -964,44 +964,161 @@ def grade_peer(request, course_id, assign_id, paper_id):
 def calculate_bonus_and_scores(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
-        Course.authored_assignments.all(), assign_id=assign_id)
+        course.authored_assignments.all(), assign_id=assign_id)
     User = get_user_model()
-    pg_profile = assign.assignment_peergrading_profile
-    if pg_profile.peergrading_deadline < datetime.now():
-        return Response({'message': 'wait for deadline to be finished'})
+    pg_profile = assign.assignment_peergrading_profile.all()[0]
+    #############################################################
+    #############################################################
+    ############################################################
+    # if pg_profile.peergrading_deadline < datetime.now():
+    #     return Response({'message': 'wait for deadline to be finished'})
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
 
-    pg_profile = assign.assignment_peergrading_profile
+    
+
+    pg_profile = assign.assignment_peergrading_profile.all()[0]
     peerdist = pg_profile.peerdist
-    students = pg_profile.peergraders.all()
-    papers = assign.assign_submissions.all()
+    students = pg_profile.peergraders.all().order_by('email')
+    papers = assign.assign_submissions.all().order_by('sub_id')
     probe_objects = ProbeSubmission.objects.all()
     probes = []
     for p in probe_objects:
-        probes.append(p.sub_id)
-
+        probes.append(p.parent_sub)
+    print('###############$$$$$$$$$')
     P_papers = []
     NP_papers = []
     for p in papers:
-        if p.sub_id in probes:
+        if p in probes:
             P_papers.append(p)
         else:
             NP_papers.append(p)
 
     P_students = []
     NP_students = []
-
     for p in papers:
-        if p.sub_id in probes:
+        if p in probes:
             P_students.append(
-                User.objects.all().get(email=p.author))
+                get_object_or_404(User, email=p.author.email))
         else:
             NP_students.append(
-                User.objects.all().get(email=p.author))
+                get_object_or_404(User, email=p.author.email))
+    # order of paper and students is maintained since we used same if condition in loops above
+    print('probes', probes)
+    print('p_papers', len(P_papers), P_papers)
+    print('np_papers', len(NP_papers), NP_papers)
 
-    questions = assign.questions.all()
+    p_len = len(P_papers)
+    np_len = len(NP_papers)
+    num_ques = assign.questions.all().count()
 
-    for ques in questions:
-        for stu in students:
-            pass
+    scores = [[[] for x in range(p_len+np_len)] for y in range(p_len+np_len)]
+    stu_row = []
+    paper_col = []
+    question_seq = []
+    probe_scores = []
+
+    for p in P_papers:
+        paper_col.append(p)
+    for p in NP_papers:
+        paper_col.append(p)
+    for p in P_students:
+        stu_row.append(p)
+    for p in NP_students:
+        stu_row.append(p)
+
+    for i, grader in enumerate(stu_row):
+        for j, paper in enumerate(paper_col):
+            try:
+                gp = PeerGraders.objects.get(student=grader, paper=paper)
+                ques_subs = gp.question_submissions.all().order_by('peer_ques_id')
+                for sub in ques_subs:
+                    if len(question_seq) < num_ques:
+                        question_seq.append(sub.parent_ques.question)
+                    if sub.rubric:
+                        scores[i][j].append(sub.rubric.marks)
+                    else:
+                        marks = 0.0
+                        for subq_sub in sub.peer_subquestions.all():
+                            marks += subq_sub.sub_rubric.marks
+                        scores[i][j].append(marks)
+            except:
+                continue
+
+    for s in scores:
+        print(s)
+
+    score_matrices = []
+
+    for i in range(num_ques):
+        mat = []
+        for j in scores:
+            mat.append([])
+            for k in j:
+                if len(k) == 0:
+                    mat[-1].append(None)
+                else:
+                    mat[-1].append(k[i])
+        score_matrices.append(mat)
+    for mat in score_matrices:
+        for i in mat:
+            print(i)
+        print()
+    print(question_seq)
+
+    for p in P_papers:
+        ps = p.probe_submission.all()[0]
+        psq = ps.probe_questions.all()
+        print('psq', psq)
+        lst = []
+        for q in question_seq:
+            for x in psq:
+                print(x.parent_ques.question)
+            probe_ques = [x for x in psq if x.parent_ques.question == q]
+            probe_ques = probe_ques[0]
+            if probe_ques.rubric:
+                lst.append(probe_ques.rubric.marks)
+            else:
+                marks = 0.0
+                for probe_subques in probe_ques.probe_subquestions.all():
+                    marks += probe_subques.sub_rubric.marks
+                lst.append(marks)
+
+        probe_scores.append(lst)
+
+    for i, ques in enumerate(question_seq):
+        probe_score = []
+        for ps in probe_scores:
+            probe_score.append(ps[i])
+        grades, bonus = trupeqa(
+            score_matrices[i], pg_profile.param_mu, pg_profile.param_gm, pg_profile.n_probes, probe_score, pg_profile.alpha)
+        for j in range(len(grades)):
+            grader = stu_row[j]
+            grade = grades[j]
+            bon = bonus[j]
+            mrks = Marks.objects.create(
+                student=grader, marks=grade, bonus=bon, total_marks=grade+bon, ques=ques)
+
+    assign.current_status = 'grading_ended'
+    assign.save()
+
+    return Response({'message': 'ran good'})
+
+
+
+
+@login_required
+@api_view(['GET'])
+def get_marks(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
+
+    if assign.current_status != 'grading_ended':
+        return Response({'message': 'You are not allowed for this operation because grading not yet ended'}, status=403)
+
+    

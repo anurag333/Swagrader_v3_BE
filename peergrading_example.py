@@ -1,8 +1,11 @@
 import math
 
 
-mu = 16.234
-gamma = 1.234
+# mu = 16.234
+# gamma = 1.234
+
+mu = 1
+gamma = 1.5
 
 # students are indexed from 0-9
 # students contains the true score of the students
@@ -10,6 +13,8 @@ gamma = 1.234
 students = [5, 8, 7, 3, 6, 9, 7, 4, 10, 6]
 # h,h,h,hs,hs,hl,hl,d,d,d(random)
 probe_idx = [0, 1, 2]
+
+print('probe paper ', probe_idx)
 
 # students paper and their marks
 
@@ -25,16 +30,18 @@ for i in range(10):
     graded_by.append([])
 
 for cnt, i in enumerate(graded_by):
-    print(cnt)
+    # print(cnt)
     for j in i:
-        print(j[0], j[1], ' ', end='')
+        print(f'paper {cnt}', 'graded by ',
+              j[0], 'got marks =', j[1], ' ', end='')
     print()
 
-# for cnt, i in enumerate(grades):
-#     print('grader ', cnt)
-#     for j in i:
-#         print(j[0], '->', j[1], 'marks', end='  |')
-#     print()
+for cnt, i in enumerate(grades):
+    # print('grader ', cnt)
+    for j in i:
+        print(f'grader {cnt}', 'graded paper ',
+              j[0], 'with marks = ', j[1], f'or({students[j[0]]})', end='  | ')
+    print()
 
 
 bi = []
@@ -45,7 +52,7 @@ for i in grades:
     sum = (marks1-students[stu1])+(marks2-students[stu2])
     bi.append(sum/2)
 
-# print('bi', bi)
+print('bi =>', bi)
 
 ti = []
 
@@ -57,20 +64,21 @@ for i in grades:
     ti.append(1/sum)
 
 
-# print('ti', ti)
+print('ti =>', ti)
 
 # r -> score of a paper
+
 
 def cal_r(graded_by):
     r = []
     for paper in range(10):
         c1 = math.sqrt(gamma)*mu
-        c2 = 0
+        c2 = 0.0
         for elem in graded_by[paper]:
             grader = elem[0]
             c2 += math.sqrt(ti[grader]) * (elem[1]-bi[grader])
         c3 = math.sqrt(gamma)
-        c4 = 0
+        c4 = 0.0
         for elem in graded_by[paper]:
             grader = elem[0]
             c4 += ti[grader]
@@ -83,14 +91,14 @@ def cal_r_minus(idx, graded_by):
     r = []
     for paper in range(10):
         c1 = math.sqrt(gamma)*mu
-        c2 = 0
+        c2 = 0.0
         for elem in graded_by[paper]:
             grader = elem[0]
             if grader == idx:
                 continue
             c2 += math.sqrt(ti[grader]) * (elem[1]-bi[grader])
         c3 = math.sqrt(gamma)
-        c4 = 0
+        c4 = 0.0
         for elem in graded_by[paper]:
             grader = elem[0]
             if grader == idx:
@@ -102,6 +110,8 @@ def cal_r_minus(idx, graded_by):
 
 
 r = cal_r(graded_by)
+print('scores=>', students)
+print('r* =>', r)
 
 
 def R(graded_by, j, setting):
@@ -110,6 +120,7 @@ def R(graded_by, j, setting):
         r = cal_r(graded_by)
     else:
         r = cal_r_minus(j, graded_by)
+        # print(r)
     if j not in probe_idx:
         return 0
     return -(r[j]-students[j])**2
@@ -132,18 +143,18 @@ def wji(graded_by):
 W = wj(graded_by)
 WJI = wji(graded_by)
 
-print(W)
-print(WJI)
+print('Wj*   =>', W)
+print('Wj*-i =>', WJI)
 
 
-alpha = 5
+alpha = 5.0
 
 
 def get_bonus(W, WJI):
     bonus = []
     for i in range(10):
         for elem in grades[i]:
-            s = 0
+            s = 0.0
             if elem[0] not in probe_idx:
                 s += alpha*(W[elem[0]]-WJI[elem[0]])
         bonus.append(s)
@@ -151,4 +162,4 @@ def get_bonus(W, WJI):
 
 
 bonus = get_bonus(W, WJI)
-print(bonus)
+print('bonus=> ', bonus)

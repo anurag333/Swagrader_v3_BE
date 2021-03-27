@@ -13,6 +13,7 @@ from itertools import chain
 import time
 from .utility import *
 import requests
+import random
 
 
 class SetupSerializer(serializers.Serializer):
@@ -141,7 +142,7 @@ class Setup(APIView):
         print("$$$$$$$$$%%%%%%%%%%%%%%%%%%%")
         print('#pg profile =', AssignmentPeergradingProfile.objects.all().count())
         pg_profile = AssignmentPeergradingProfile.objects.create(assignment=assign, probing_deadline=datetime.now(
-        ) - timedelta(days=2), peergrading_deadline=datetime.now() + timedelta(days=1), n_probes=3, peerdist=4)
+        ) - timedelta(days=2), peergrading_deadline=datetime.now() + timedelta(days=1), n_probes=3, peerdist=4, alpha=5)
         print('#pg profile =', AssignmentPeergradingProfile.objects.all().count())
         pg_profile.instructor_graders.set(tuple(instructors))
         pg_profile.ta_graders.set(tuple(ta))
@@ -158,10 +159,51 @@ class Setup(APIView):
 
         URL = f"http://127.0.0.1:8000/dashboard/courses/{course.course_id}/assignments/{assign.assign_id}/start-grading"
         print(URL)
-        time.sleep(10)
 
+        time.sleep(10)
         assign.current_status = 'rubric_set'
         assign.save()
+
+        URL = f"http://127.0.0.1:8000/dashboard/courses/{course.course_id}/assignments/{assign.assign_id}/start-peergrading"
+        print(URL)
+        time.sleep(5)
+
+        peer_paper_obj = PeerGraders.objects.all()
+        # print('peer paer obj', len(peer_paper_obj), peer_paper_obj)
+        for gp in peer_paper_obj:
+            # print('gp ', gp)
+            peer_sub_ques = gp.question_submissions.all()
+            for psq in peer_sub_ques:
+                # print('psq ', psq)
+                # have to check if outline have subques or not
+                if psq.rubric:
+                    ques = psq.parent_ques
+                    rubrics = ques.g_rubrics.all()
+                    psq.rubric = random.choice(tuple(rubrics))
+                    psq.save()
+                else:
+                    peer_sub_sub_ques = psq.peer_subquestions.all()
+                    for pssq in peer_sub_sub_ques:
+                        # print('pssq', pssq)
+                        sub_ques = pssq.parent_sub_ques
+                        sub_rubrics = sub_ques.g_subrubrics.all()
+                        pssq.sub_rubric = random.choice(tuple(sub_rubrics))
+                        pssq.save()
+
+        probe_graders = chain(
+            pg_profile.instructor_graders.all(), pg_profile.ta_graders.all())
+        for grader in probe_graders:
+            probe_subs = grader.probes_to_check.all()
+            for probe in probe_subs:
+                psq = probe.probe_questions.all()
+                for ps in psq:
+                    # check outline for questions
+                    probe_sub_sub_ques = ps.probe_subquestions.all()
+                    for pssq in probe_sub_sub_ques:
+                        sub_ques = pssq.parent_sub_ques
+                        sub_rubrics = sub_ques.g_subrubrics.all()
+                        pssq.sub_rubric = random.choice(tuple(sub_rubrics))
+                        pssq.save()
 
         return Response({'message': 'Setup Successful!'}, status=200)
 

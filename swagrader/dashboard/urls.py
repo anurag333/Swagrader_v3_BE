@@ -58,5 +58,9 @@ urlpatterns = [
          get_peer_papers),
     path('courses/<uuid:course_id>/assignments/<int:assign_id>/grade-peer/<int:paper_id>',
          grade_peer),
+    #     path('courses/<uuid:course_id>/assignments/<int:assign_id>/grade-peer/<int:paper_id>',
+    #          grade_peer),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/calculate',
+         calculate_bonus_and_scores),
 
 ]

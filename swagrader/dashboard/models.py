@@ -126,7 +126,6 @@ class AssignmentGradingProfile(models.Model):
 
 
 class AssignmentPeergradingProfile(models.Model):
-    # alpha
     assignment = models.ForeignKey(
         Assignment, on_delete=models.CASCADE, related_name="assignment_peergrading_profile")
     param_mu = models.FloatField(
@@ -139,7 +138,7 @@ class AssignmentPeergradingProfile(models.Model):
     peergrading_deadline = models.DateTimeField(null=True, blank=True)
     n_probes = models.IntegerField(
         default=20, help_text='These are the number of probes you want to set for this assignment.')
-
+    alpha = models.IntegerField(default=5, help_text='alpha value')
     instructor_graders = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 'in_pgraded_assignments')
     peergraders = models.ManyToManyField(
@@ -304,7 +303,7 @@ class PeerGraders(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['student', 'paper'], name='student-paper')]
+            fields=['student', 'paper'], name='student_paper')]
 
 
 class PeerSubmissionQuestion(models.Model):
@@ -326,6 +325,7 @@ class PeerSubmissionSubquestion(models.Model):
     parent_sub_ques = models.ForeignKey(
         SubQuestion, on_delete=models.CASCADE, null=True, blank=True)
 
+
 class Marks(models.Model):
     m_id = models.AutoField(primary_key=True)
     student = models.ForeignKey(
@@ -334,12 +334,3 @@ class Marks(models.Model):
     marks = models.FloatField(default=0)
     bonus = models.FloatField(default=0)
     total_marks = models.FloatField(default=0)
-
-
-class BiasReliability(models.Model):
-    br_id = models.AutoField(primary_key=True)
-    ques = models.ForeignKey(Question, on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
-    bi = models.FloatField(default=0)
-    ti = models.FloatField(default=0)

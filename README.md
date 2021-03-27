@@ -123,10 +123,11 @@ added subquestion feild in subrubric
 
 
 
-TODO: add sanatization for rubric creation,grade_probe->sanatization
+TODO:
+** make pg_profile api
+ add sanatization for rubric creation,grade_probe->sanatization
 add roaster management
 distribution of probes to ta and instructors can be improved
 add step by step mandation
-
 
 
