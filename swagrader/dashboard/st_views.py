@@ -108,9 +108,11 @@ def submit_assignment(request, course_id, assign_id):
                         submission=sub, question=ques, pdf=request.data[ques_id])
             except Question.DoesNotExist:
                 return Response({'message': f'{ques_id} does not exist for this assignment, bad input.'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'message': 'Submitted succesfully'}, status=200)
+        return Response({'success': 'Submitted succesfully'}, status=200)
 
     elif request.method == 'GET':
+        if not curr_assign.published_for_subs:
+            return Response({'message': 'Assignment is not published for submissions.'}, status=status.HTTP_403_FORBIDDEN)
         questions = curr_assign.questions.all()
         data = {}
         data['questions'] = []

@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'rest_auth',
     'rest_auth.registration',
     'corsheaders',
+    'crispy_forms',
 
 ]
 
@@ -48,6 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'swagrader.urls'
@@ -55,7 +57,7 @@ ROOT_URLCONF = 'swagrader.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -161,3 +163,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 CORS_ORIGIN_ALLOW_ALL = True
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+LOGIN_REDIRECT_URL = 'home'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'

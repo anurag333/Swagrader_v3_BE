@@ -3,6 +3,7 @@ from .in_views import *
 from .ta_views import *
 from .views import *
 from .st_views import *
+from .front_end_views import *
 
 urlpatterns = [
     path('', CourseListView.as_view()),
@@ -60,7 +61,20 @@ urlpatterns = [
          grade_peer),
     #     path('courses/<uuid:course_id>/assignments/<int:assign_id>/grade-peer/<int:paper_id>',
     #          grade_peer),
-    path('courses/<uuid:course_id>/assignments/<int:assign_id>/calculate',
-         calculate_bonus_and_scores),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/calculate-scores',
+         calculate_scores),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/calculate-bonus',
+         calculate_bonus),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/question/<int:ques_id>/regrade',
+         regrading_requests),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/assign-regraders',
+         assign_regraders),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/get-regrading-questions',
+         get_regrading_questions),
+    path('courses/<uuid:course_id>/assignments/<int:assign_id>/regrade/<int:m_id>',
+         regrade),
+    path('courses/<uuid:course_id>/privilege',
+         get_user_privilege),
+
 
 ]

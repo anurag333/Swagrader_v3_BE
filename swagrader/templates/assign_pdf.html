@@ -1,0 +1,93 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>home page.</h2>
+<div>
+        <iframe src="{{pdf.url}}" style="width: 100%; height: 700px"></iframe>
+</div>
+<div id="peer_papers" class="list-group bg-light p-5"></div>
+
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log(res);
+                {% comment %} const req_sub = new XMLHttpRequest();
+                req_sub.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit");
+                req_sub.onload = () => {
+                        const data = JSON.parse(req_sub.responseText);
+                        console.log("messgae get loading");
+                        console.log(data);
+                        if ("message" in data) {
+                                return;
+                        }
+                };
+                req_sub.send(); {% endcomment %}
+                if (res["privilege"] == "student") {
+                        console.log("in this page");
+                        console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
+                        const request = new XMLHttpRequest();
+                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
+                        request.onload = () => {
+                                console.log("here also");
+                                const data = JSON.parse(request.responseText);
+                                console.log("messgae loading");
+                                console.log(data);
+                                if ("message" in data) {
+                                        return;
+                                }
+                                document.getElementById("peer_papers").innerHTML = "<h4>Peer Papers to check :</h4> </br>";
+                                for (paper in data) {
+                                        console.log(paper);
+                                        let li = document.createElement("li");
+                                        let link = "{{assign_id}}";
+                                        link += "/grade_peer";
+                                        str = data[paper];
+                                        let idx = str.indexOf('"paper":');
+                                        idx += 8;
+                                        console.log(idx);
+                                        console.log(str[idx]);
+                                        let strr = str.substring(idx, str.length - 1);
+                                        link += "/" + strr;
+                                        console.log(link);
+                                        li.innerHTML = '<li> <a href= "' + link + '">' + "grade peer paper" + "</a></li>";
+                                        document.querySelector("#peer_papers").appendChild(li);
+                                }
+                        };
+                        const data = new FormData();
+                        request.send(data);
+                }
+                if (res["privilege"] == "ta" || res["privilege"] == "instructor") {
+                        console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
+                        const request = new XMLHttpRequest();
+                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
+                        request.onload = () => {
+                                console.log("instructor one");
+                                const data = JSON.parse(request.responseText);
+                                console.log("probes");
+                                console.log(data);
+                                if ("message" in data) {
+                                        return;
+                                }
+                                for (paper in data) {
+                                        console.log(paper);
+                                        let li = document.createElement("li");
+                                        let link = "{{assign_id}}";
+                                        link += "/grade_probe";
+                                        str = data[paper];
+                                        link += "/" + str;
+                                        console.log(link);
+                                        li.innerHTML = '<li> <a href= "' + link + '">' + "grade probe paper" + "</a></li>";
+                                        document.querySelector("#peer_papers").appendChild(li);
+                                }
+                        };
+                        const data = new FormData();
+                        request.send(data);
+                }
+        };
+        const dat = new FormData();
+        req.send(dat);
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}

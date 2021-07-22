@@ -1,0 +1,71 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>home page.</h2>
+
+<div class="hidden" id="tablediv"></div>
+<ul class="list-group bg-light p-5" id="assign"></ul>
+
+<div class="list-group bg-light p-5" , id="for_form">
+        <h1>Add Assignment </h1>
+        <form id = "form1" action="/dashboard/course/{{course_id}}/assign/create" method="post">
+                <label for="title">assign Name : </label>
+                <input type="text" id="assign_name" name="title" /><br /><br />
+                PDF : <input type="file" name="pdf" accept="application/pdf" />
+                <br /><br />
+                <label for="publish_date">Publish Date:</label>
+                <input type="date" id="publish_date" name="publish_date">
+
+                </br /><br>
+                
+                <label for="submission_deadline">submission_deadline:</label>
+                <input type="date" id="submission_deadline" name="submission_deadline">
+
+                </br /><br>
+                
+                allow late submission : 
+                <input type="radio" id="yes" name="late_sub" value="yes" />
+                <label for="yes">Yes</label>
+                <input type="radio" id="no" name="late_sub" value="no" />
+                <label for="no">No</label>
+                <br /><br />
+
+                <button type="submit" form="form1" value="Submit">Submit</button>       
+        </form>
+        
+</div>
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log("res", res);
+                if (res["privilege"] != "instructor") {
+                        document.getElementById("for_form").innerHTML = "";
+                }
+        }
+        req.send();
+
+        const request = new XMLHttpRequest();
+        request.open("GET", "/dashboard/courses/{{course_id}}/assignments");
+        request.onload = () => {
+                document.querySelector("#assign").innerHTML = "";
+                const data = JSON.parse(request.responseText);
+                console.log("messgae loading");
+                console.log(data);
+                for (assign in data) {
+                        console.log(assign);
+                        console.log(data[assign]);
+                        let link = "assignments/";
+                        link += data[assign].assign_id.toString();
+                        console.log(link);
+                        let li = document.createElement("li");
+                        li.innerHTML = '<li> <a href= "' + link + '">' + data[assign].assign_id + " : " + data[assign].title + "</a></li>";
+                        document.querySelector("#assign").appendChild(li);
+                }
+        };
+        const data = new FormData();
+        request.send(data);
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>home page.</h2>
+<div>
+        <iframe src="{{pdf.url}}" style="width: 100%; height: 700px"></iframe>
+</div>
+{% for sub,id in ques%}
+<div>
+        <iframe src="{{sub.url}}" style="width: 100%; height: 700px"></iframe>
+</div>
+<div id="{{id}}">space for marks ques_ids {{id}}</div>
+<br /><br />
+{%endfor%}
+<div>
+        <button type="submit" id="submit_marks">submit marks</button>
+</div>
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log("res", res);
+                if (res["privilege"] != "student") {
+                        const request = new XMLHttpRequest();
+                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/grade-probe/{{probe_id}}");
+                        console.log("timepass");
+                        var outline_data;
+                        request.onload = () => {
+                                console.log("here also");
+                                const data = JSON.parse(request.responseText);
+                                outline_data = data;
+                                console.log("messgae loading");
+                                console.log(data);
+                                for (let paper in data) {
+                                        console.log(paper);
+                                        ques = data[paper];
+                                        let str = ques["qid"].toString();
+                                        if (ques["rubrics"].length > 0) {
+                                                document.getElementById(str).innerHTML = "Marks : ";
+                                                let select = document.createElement("SELECT");
+                                                select.setAttribute("id", "select" + ques["qid"].toString());
+                                                document.getElementById(str).appendChild(select);
+                                                for (let idx = 0; idx < ques["rubrics"].length; idx++) {
+                                                        let rub = ques["rubrics"][idx];
+                                                        var opt = document.createElement("option");
+                                                        opt.setAttribute("value", rub["rubric_id"]);
+                                                        var nod = document.createTextNode(rub["marks"]);
+                                                        opt.appendChild(nod);
+                                                        document.getElementById("select" + ques["qid"].toString()).appendChild(opt);
+                                                }
+                                        } else {
+                                                document.getElementById(str).innerHTML = "Marks : ";
+                                                for (let subques in ques["sub_questions"]) {
+                                                        sq = ques["sub_questions"][subques];
+                                                        let div = document.createElement("div");
+                                                        div.innerHTML = "sub_questions " + sq["sqid"] + " marks :";
+                                                        let select = document.createElement("SELECT");
+                                                        div.appendChild(select);
+                                                        select.setAttribute("id", "select_sq" + sq["sqid"].toString());
+                                                        document.getElementById(str).appendChild(div);
+                                                        for (let sub_r in sq["sub_rubrics"]) {
+                                                                let sub_rub = sq["sub_rubrics"][sub_r];
+                                                                var opt = document.createElement("option");
+                                                                opt.setAttribute("value", sub_rub["sub_rubric_id"]);
+                                                                var nod = document.createTextNode(sub_rub["marks"]);
+                                                                opt.appendChild(nod);
+                                                                document.getElementById("select_sq" + sq["sqid"].toString()).appendChild(opt);
+                                                        }
+                                                }
+                                        }
+                                }
+                        };
+                        const data = new FormData();
+                        request.send(data);
+
+                        document.getElementById("submit_marks").onclick = function () {
+                                let ret = outline_data;
+                                for (let i = 0; i < outline_data.length; i++) {
+                                        ques = outline_data[i];
+                                        if (ques["sub_questions"].length > 0) {
+                                                for (let idx = 0; idx < ques["sub_questions"].length; idx++) {
+                                                        sq = ques["sub_questions"][idx];
+                                                        let str = "select_sq" + sq["sqid"].toString();
+                                                        let rub_sel = document.getElementById(str).value;
+                                                        console.log(rub_sel);
+                                                        let arr = [];
+                                                        for (let index = 0; index < ret[i]["sub_questions"][idx]["sub_rubrics"].length; index++) {
+                                                                if (ret[i]["sub_questions"][idx]["sub_rubrics"][index]["sub_rubric_id"] == rub_sel) {
+                                                                        arr.push(ret[i]["sub_questions"][idx]["sub_rubrics"][index]);
+                                                                }
+                                                        }
+                                                        console.log("arr", arr);
+                                                        ret[i]["sub_questions"][idx]["sub_rubrics"] = arr;
+                                                }
+                                        } else {
+                                                let str = "select" + ques["qid"].toString();
+                                                let rub_sel = document.getElementById(str).value;
+                                                console.log(rub_sel);
+                                                let arr = [];
+                                                for (let idx = 0; idx < ret[i]["rubrics"].length; idx++) {
+                                                        if (ret[i]["rubrics"][idx]["rubric_id"] == rub_sel) {
+                                                                arr.push(ret[i]["rubrics"][idx]);
+                                                        }
+                                                }
+                                                console.log("arr", arr);
+                                                ret[i]["rubrics"] = arr;
+                                        }
+                                }
+                                console.log("ret", ret);
+                                const request_submit = new XMLHttpRequest();
+                                request_submit.open("POST", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/grade-probe/{{probe_id}}");
+                                request_submit.onload = () => {
+                                        const data_1 = JSON.parse(request_submit.responseText);
+                                        console.log("data_1", data_1);
+                                };
+                                const data_submit = new FormData();
+                                data_submit["question"] = ret;
+                                console.log("data_submit", data_submit);
+                                request_submit.send(data_submit);
+                        };
+                }
+        };
+        const dat = new FormData();
+        req.send(dat);
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}

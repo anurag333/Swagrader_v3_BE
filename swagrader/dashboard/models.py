@@ -89,6 +89,7 @@ class Assignment(models.Model):
     published_for_subs = models.BooleanField(default=False)
     average = models.FloatField(default=0)
     regrading_requests = models.BooleanField(default=True)
+    regrading_requests_deadline = models.DateTimeField(null=True)
     grading_methodology = models.CharField(max_length=2, choices=(
         ('pg', 'Peergrading'), ('ng', 'Normal grading')), default='pg')
     graded = models.BooleanField(default=False)
@@ -328,9 +329,32 @@ class PeerSubmissionSubquestion(models.Model):
 
 class Marks(models.Model):
     m_id = models.AutoField(primary_key=True)
+    parent_assign = models.ForeignKey(
+        Assignment, on_delete=models.CASCADE, default=None)
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='get_marks')
     ques = models.ForeignKey(Question, on_delete=models.CASCADE)
     marks = models.FloatField(default=0)
     bonus = models.FloatField(default=0)
     total_marks = models.FloatField(default=0)
+    regrade = models.IntegerField(default=0)
+    regrader = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='get_regrading_ques', default=None)
+
+
+class R_star_ques(models.Model):
+    rq_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    ques = models.ForeignKey(Question, on_delete=models.CASCADE)
+    marks = models.FloatField(default=0)
+    regrade = models.IntegerField(default=0)
+
+
+class R_star_subques(models.Model):
+    rsq_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sub_ques = models.ForeignKey(SubQuestion, on_delete=models.CASCADE)
+    marks = models.FloatField(default=0)
+    regrade = models.IntegerField(default=0)

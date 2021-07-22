@@ -22,6 +22,7 @@ from django.contrib.auth import get_user_model
 from .utility import *
 from rest_framework.renderers import JSONRenderer
 from .trupeqa import *
+from django.views.decorators.csrf import csrf_exempt
 
 
 @login_required
@@ -322,7 +323,7 @@ class CourseInstructorDetailUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
 
 class AssignmentListView(generics.ListAPIView):
     serializer_class = AssignmentListCreateSerializer
-    permission_classes = [permissions.IsAuthenticated, IsInstructorForMetadata]
+    permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'course_id'
 
     def get_queryset(self):
@@ -878,35 +879,40 @@ def get_peer_papers(request, course_id, assign_id):
         return Response(res, status=200)
 
 
+@csrf_exempt
 @login_required
 @api_view(['GET', 'POST'])
 def grade_peer(request, course_id, assign_id, paper_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
         course.authored_assignments.all(), assign_id=assign_id)
-
     if not request.user in course.students.all():
+        print("usr forb")
         return Response({'message': 'You are not allowed for this operation because you are not an student'}, status=403)
     # probe_selected which status
-    if assign.current_status != 'papers_distributed':
-        return Response({'message': 'This step is not activated'}, status=403)
+    # if assign.current_status != 'papers_distributed':
+    #     print("here forb")
+    #     return Response({'message': 'This step is not activated'}, status=403)
 
     cur_paper = AssignmentSubmission.objects.get(sub_id=paper_id)
     pg = PeerGraders.objects.all().get(student=request.user, paper=cur_paper)
     peer_grader_obj = get_object_or_404(
         PeerGraders.objects.all(), student=request.user, paper=cur_paper)  # check how to give pk
+    print("atleast this")
     if request.method == 'GET':
+        print("atleast this")
         # give back the details for the assign, which is essentially the outline, and the global rubrics which are set for this assign
         outline_with_rubrics = get_outline_with_rubrics(assign)
         return Response(outline_with_rubrics, status=200)
 
-    elif request.method == 'POST':
+    if request.method == 'POST':
+        print("#############################")
         pg_profile = assign.assignment_peergrading_profile.all()[0]
         # user must not cross deadline
         if pg_profile.peergrading_deadline < timezone.now():
             return Response({'message': 'deadline over'})
         questions = request.data.get("questions", None)
-
+        print(questions)
         # check for payload sanitization
         # sanitization_status = sanitization_check(assign, questions)
         sanitization_status = 'ok'
@@ -961,7 +967,7 @@ def grade_peer(request, course_id, assign_id, paper_id):
 
 @login_required
 @api_view(['GET'])
-def calculate_bonus_and_scores(request, course_id, assign_id):
+def calculate_scores(request, course_id, assign_id):
     course = get_object_or_404(Course, course_id=course_id)
     assign = get_object_or_404(
         course.authored_assignments.all(), assign_id=assign_id)
@@ -974,8 +980,6 @@ def calculate_bonus_and_scores(request, course_id, assign_id):
     #     return Response({'message': 'wait for deadline to be finished'})
     if not request.user in course.instructors.all():
         return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
-
-    
 
     pg_profile = assign.assignment_peergrading_profile.all()[0]
     peerdist = pg_profile.peerdist
@@ -1090,14 +1094,176 @@ def calculate_bonus_and_scores(request, course_id, assign_id):
         probe_score = []
         for ps in probe_scores:
             probe_score.append(ps[i])
-        grades, bonus = trupeqa(
+        grades = trupeqa(
             score_matrices[i], pg_profile.param_mu, pg_profile.param_gm, pg_profile.n_probes, probe_score, pg_profile.alpha)
         for j in range(len(grades)):
             grader = stu_row[j]
             grade = grades[j]
-            bon = bonus[j]
+            # bon = bonus[j]
             mrks = Marks.objects.create(
-                student=grader, marks=grade, bonus=bon, total_marks=grade+bon, ques=ques)
+                student=grader, marks=grade, parent_assign=assign, bonus=0, total_marks=grade+0, ques=ques)
+
+        for i in range(len(grades)):
+            print('paper ', paper_col[i], 'got ', grades[i], ' marks')
+        # for i in range(len(bonus)):
+        #     print('student ', stu_row[i], 'got ', bonus[i], ' bonus')
+
+    assign.current_status = 'grading_ended'
+    assign.save()
+
+    return Response({'message': 'ran good'})
+
+
+@login_required
+@api_view(['GET'])
+def calculate_bonus(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+    #############################################################
+    #############################################################
+    ############################################################
+    # if pg_profile.peergrading_deadline < datetime.now():
+    #     return Response({'message': 'wait for deadline to be finished'})
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
+
+    pg_profile = assign.assignment_peergrading_profile.all()[0]
+    peerdist = pg_profile.peerdist
+    students = pg_profile.peergraders.all().order_by('email')
+    papers = assign.assign_submissions.all().order_by('sub_id')
+    probe_objects = ProbeSubmission.objects.all()
+    probes = []
+    for p in probe_objects:
+        probes.append(p.parent_sub)
+    print('###############$$$$$$$$$')
+    P_papers = []
+    NP_papers = []
+    for p in papers:
+        if p in probes:
+            P_papers.append(p)
+        else:
+            NP_papers.append(p)
+
+    P_students = []
+    NP_students = []
+    for p in papers:
+        if p in probes:
+            P_students.append(
+                get_object_or_404(User, email=p.author.email))
+        else:
+            NP_students.append(
+                get_object_or_404(User, email=p.author.email))
+    # order of paper and students is maintained since we used same if condition in loops above
+    print('probes', probes)
+    print('p_papers', len(P_papers), P_papers)
+    print('np_papers', len(NP_papers), NP_papers)
+
+    p_len = len(P_papers)
+    np_len = len(NP_papers)
+    num_ques = assign.questions.all().count()
+
+    scores = [[[] for x in range(p_len+np_len)] for y in range(p_len+np_len)]
+    stu_row = []
+    paper_col = []
+    question_seq = []
+    probe_scores = []
+
+    for p in P_papers:
+        paper_col.append(p)
+    for p in NP_papers:
+        paper_col.append(p)
+    for p in P_students:
+        stu_row.append(p)
+    for p in NP_students:
+        stu_row.append(p)
+
+    for i, grader in enumerate(stu_row):
+        for j, paper in enumerate(paper_col):
+            try:
+                gp = PeerGraders.objects.get(student=grader, paper=paper)
+                ques_subs = gp.question_submissions.all().order_by('peer_ques_id')
+                for sub in ques_subs:
+                    if len(question_seq) < num_ques:
+                        question_seq.append(sub.parent_ques.question)
+                    if sub.rubric:
+                        scores[i][j].append(sub.rubric.marks)
+                    else:
+                        marks = 0.0
+                        for subq_sub in sub.peer_subquestions.all():
+                            marks += subq_sub.sub_rubric.marks
+                        scores[i][j].append(marks)
+            except:
+                continue
+
+    for s in scores:
+        print(s)
+
+    score_matrices = []
+
+    for i in range(num_ques):
+        mat = []
+        for j in scores:
+            mat.append([])
+            for k in j:
+                if len(k) == 0:
+                    mat[-1].append(None)
+                else:
+                    mat[-1].append(k[i])
+        score_matrices.append(mat)
+    for mat in score_matrices:
+        for i in mat:
+            print(i)
+        print()
+    print(question_seq)
+
+    for p in P_papers:
+        ps = p.probe_submission.all()[0]
+        psq = ps.probe_questions.all()
+        print('psq', psq)
+        lst = []
+        for q in question_seq:
+            for x in psq:
+                print(x.parent_ques.question)
+            probe_ques = [x for x in psq if x.parent_ques.question == q]
+            probe_ques = probe_ques[0]
+            if probe_ques.rubric:
+                lst.append(probe_ques.rubric.marks)
+            else:
+                marks = 0.0
+                for probe_subques in probe_ques.probe_subquestions.all():
+                    marks += probe_subques.sub_rubric.marks
+                lst.append(marks)
+
+        probe_scores.append(lst)
+
+    for i, ques in enumerate(question_seq):
+        probe_score = []
+        for ps in probe_scores:
+            probe_score.append(ps[i])
+        yj =[]
+        for cnt,pap in paper_col:
+            stu = pap.author
+            mti = Marks.objects.all().filter(ques = ques).filter(student = stu)[0]
+            yj.append(mti.marks)
+
+        bonus = calculate_bonus(
+            score_matrices[i], pg_profile.param_mu, pg_profile.param_gm, pg_profile.n_probes, probe_score,yj, pg_profile.alpha)
+        for j in range(len(bonus)):
+            grader = stu_row[j]
+            # grade = grades[j]
+            bon = bonus[j]
+            mti = Marks.objects.all().filter(student = grader).filter(ques = ques)[0]
+            mti.bonus = bon
+            mti.total_marks = mti.marks + mti.bonus
+            mti.save()
+            
+
+        # for i in range(len(grades)):
+        #     print('paper ', paper_col[i], 'got ', grades[i], ' marks')
+        for i in range(len(bonus)):
+            print('student ', stu_row[i], 'got ', bonus[i], ' bonus')
 
     assign.current_status = 'grading_ended'
     assign.save()
@@ -1106,6 +1272,121 @@ def calculate_bonus_and_scores(request, course_id, assign_id):
 
 
 
+@login_required
+@api_view(['GET'])
+def regrading_requests(request, course_id, assign_id, ques_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+    if not request.user in course.student.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an student'}, status=403)
+
+    if assign.current_status != 'grading_ended':
+        return Response({'message': 'You are not allowed for this operation because grading not yet ended'}, status=403)
+
+    if assign.regrading_requests_deadline < datetime.datetime.now():
+        return Response({'message': 'regrading request deadlilne exceeded'}, status=403)
+    ques = Question.objects.all().filter(ques_id=ques_id)[0]
+    marks_table_instance = Marks.objects.all().filter(
+        student=request.user).filter(ques=ques)[0]
+    marks_table_instance.regrade = 1
+    marks_table_instance.save()
+
+    return Response({'message': "submitted for regrading"}, status=200)
+
+
+@login_required
+@api_view(['GET'])
+def assign_regraders(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+    if not request.user in course.instructors.all():
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor'}, status=403)
+
+    if assign.current_status != 'grading_ended':
+        return Response({'message': 'You are not allowed for this operation because grading not yet ended'}, status=403)
+
+    if assign.regrading_requests_deadline > datetime.datetime.now():
+        return Response({'message': 'regrading request deadlilne not exceeded'}, status=403)
+
+    marks_table_instances = Marks.objects.all().filter(regrade=1)
+    ta = assign.assignment_peergrading_profile.ta_graders
+    ins = assign.assignment_peergrading_profile.instructor_graders
+    graders = list(chain(ta, ins))
+    g_len = len(graders)
+    for cnt, mti in enumerate(marks_table_instances):
+        mti.regrader = graders[cnt % g_len]
+        mti.save()
+
+    return Response({'message': "regraders assigned"})
+
+
+@login_required
+@api_view(['GET'])
+def get_regrading_questions(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+    if not list(chain(request.user in course.instructors.all(), course.teaching_assistants.all())):
+        return Response({'message': 'You are not allowed for this operation because you are not an instructor or teaching assistant'}, status=403)
+
+    if assign.current_status != 'grading_ended':
+        return Response({'message': 'You are not allowed for this operation because grading not yet ended'}, status=403)
+
+    if assign.regrading_requests_deadline > datetime.datetime.now():
+        return Response({'message': 'regrading request deadlilne not exceeded'}, status=403)
+
+    marks_table_instances = request.user.get_regrading_ques
+    marks_table_instances = marks_table_instances.filter(
+        parent_assign=assign).filter(regrade=1)
+    if(len(marks_table_instances) == 0):
+        return Response({'message': 'No regrading requests'})
+    res = []
+
+    for mti in marks_table_instances:
+        ques = mti.ques
+        student = mti.student
+        m_id = mti.m_id
+        marks = mti.marks
+        assign_sub = AssignmentSubmission.objects.all().filter(
+            author=student).filter(assignment=assign)[0]
+        ques_sub = QuestionSubmission.all().filter(
+            submission=assign_sub).filter(question=ques)[0]
+        pdf = ques_sub.pdf
+        dict = {
+            "m_id": m_id,
+            "curr_marks": marks,
+            "pdf": pdf,
+            "student": student,
+        }
+        res.append(dict)
+
+    return Response({"regrading_requests":res}, status=200)
+
+@login_required
+@api_view(['POST'])
+def regrade(request, course_id, assign_id,m_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+    mti = Marks.objects.all().filter(m_id = m_id)[0]
+    if request.user != mti.regrader:
+        return Response({'message': 'you are not the regrader'},status=403)
+    
+    sample_incomint_data = {
+        "marks" : 2,
+    }
+    new_marks = request.data.get("marks")
+    mti.marks = new_marks
+    mti.regrade = 0
+    mti.save()
+    return Response({"message":"marks submitted"},status=200)
+    
 
 @login_required
 @api_view(['GET'])
@@ -1121,4 +1402,28 @@ def get_marks(request, course_id, assign_id):
     if assign.current_status != 'grading_ended':
         return Response({'message': 'You are not allowed for this operation because grading not yet ended'}, status=403)
 
-    
+
+@login_required
+@api_view(['GET'])
+def get_user_privilege(request, course_id):
+    User = get_user_model()
+    course = get_object_or_404(Course, course_id=course_id)
+    if(request.user in course.instructors.all()):
+        return Response({'privilege': 'instructor'})
+    if(request.user in course.teaching_assistants.all()):
+        return Response({'privilege': 'ta'})
+    if(request.user in course.students.all()):
+        return Response({'privilege': 'student'})
+    else:
+        return Response({'privilege': 'none'})
+
+
+@api_view(['GET'])
+def submit_assignment(request, course_id, assign_id):
+    try:
+        curr_course = Course.objects.get(course_id=course_id)
+        curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
+    except Course.DoesNotExist or Assignment.DoesNotExist:
+        raise Http404
+
+    return Response({'status': curr_assign.current_status})

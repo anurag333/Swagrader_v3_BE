@@ -1,0 +1,140 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Assignment Page</h2>
+
+
+<div class="border border-info p-3">
+        <h2 class="text-success p-3">List of Assignments in - {{course_name}}</h2> 
+        <ul class="list-group bg-light p-5" id="assign"></ul>
+</div>
+</br></br>
+
+<p>
+  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#add_assignment" aria-expanded="false" aria-controls="add_assignment">
+    Add Assignment
+  </button>
+</p>
+<div class="collapse" id="add_assignment">
+  <div class="card card-body">
+    
+        <div class="list-group border border-info bg-light p-5" , id="for_form">
+                <div id="alert"></div>
+                <h1 class="text-success p-3">Add Assignment</h1>
+
+                <form id="form1" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                                <label for="title">Assignment Name</label>
+                                <input type="text" id="assign_name" name="title" class="form-control" placeholder="Enter Assignment Name" />
+                        </div>
+                        <div class="form-group">
+                                <label for="cnum">Assignment PDF : </label>
+                                <input type="file" name="pdf" accept="application/pdf,application/vnd.ms-excel" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                                <label for="publish_date">Publish Date:</label>
+                                <input type="datetime-local" id="publish_date" name="publish_date" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                                <label for="submission_deadline">Submission Deadline:</label>
+                                <input type="datetime-local" id="submission_deadline" name="submission_deadline" class="form-control" />
+                        </div>
+
+                        <h6>Allow Late Submission :</h6>
+                        <div class="form-check">
+                                <input type="radio" id="yes" name="allow_late_subs" value="True" class="form-check-input" />
+                                <label for="yes">Yes</label>
+                        </div>
+                        <div class="form-check">
+                                <input type="radio" id="no" name="allow_late_subs" value="False" class="form-check-input" />
+                                <label for="no">No</label>
+                        </div>
+
+                        <div class="form-group">
+                                <label for="late_sub_deadline">Late Submission Deadline:</label>
+                                <input type="datetime-local" id="late_sub_deadline" name="late_sub_deadline" class="form-control" />
+                        </div>
+
+                        <button type="button" class="btn btn-primary" id="btn">Submit</button>
+                </form>
+        </div>
+  </div>
+</div>
+
+
+
+
+
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log("res", res);
+                if (res["privilege"] != "instructor") {
+                        document.getElementById("for_form").innerHTML = "";
+                }
+        };
+        req.send();
+
+        var loadData = function () {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments");
+                request.onload = () => {
+                        document.querySelector("#assign").innerHTML = "";
+                        const data = JSON.parse(request.responseText);
+                        console.log("messgae loading");
+                        console.log(data);
+                        for (assign of data) {
+                                console.log(assign);
+                                let link = "assignments/";
+                                link += assign.assign_id.toString();
+                                console.log(link);
+
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                let a_link = document.createElement("a");
+                                a_link.href = link;
+                                a_link.classList.add("list-group-item-action");
+                                a_link.innerHTML = assign.assign_id + " : " + assign.title;
+                                li.appendChild(a_link);
+                                document.querySelector("#assign").appendChild(li);
+
+                                {% comment %} let li = document.createElement("li");
+                                li.innerHTML = '<li> <a href= "' + link + '">' + data[assign].assign_id + " : " + data[assign].title + "</a></li>";
+                                document.querySelector("#assign").appendChild(li); {% endcomment %}
+                        }
+                };
+                request.send();
+        };
+
+        loadData();
+
+        document.getElementById("btn").onclick = function () {
+                var form = document.getElementById("form1");
+                var formData = new FormData(form);
+                console.log("formData", formData.entries());
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/dashboard/courses/{{course_id}}/assignments/create", true);
+                xhr.onload = () => {
+                        const data = JSON.parse(xhr.responseText);
+                        console.log("statusText", xhr.statusText);
+                        console.log("messgae loading");
+                        console.log(data);
+                        if (xhr.statusText.toString() == "Created") {
+                                document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">Assignment created successfully</div>';
+                                loadData();
+                                document.getElementById("form1").reset();
+                        } else {
+                                document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">some error occured during the Assignment creation</div>';
+                        }
+                };
+                xhr.send(formData);
+        };
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}

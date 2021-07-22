@@ -1,0 +1,90 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Dashboard</h2>
+</br></br>
+<div class="border border-info p-3">
+<h2 class="text-success p-3">Teaching Assistant Courses</h2>
+<ul class="list-group bg-light p-5" id="ta_courses"></ul>
+</div>
+<div class="border border-info p-3">
+<h2 class="text-success p-3"> Student Courses</h2>
+<ul class="list-group bg-light p-5" id="stu_courses"></ul>
+</div>
+
+<script type="text/javascript">
+        
+        let get_role = function(arr){
+                let role = "student";
+                for(let i =0;i<arr.length;i++){
+                        if(arr[i]=="instructor"){
+                                role = "instructor";
+                        }
+                        if(arr[i]=="ta" && role == "student"){
+                                role = "ta";
+                        }
+                }
+                return role;
+        };
+
+        const request = new XMLHttpRequest();
+         request.open("GET", "/dashboard");
+        request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                console.log("messgae loading");
+                console.log(data);
+                let ins = [];
+                let ta = [];
+                let stu = [];
+                for(course of data.courses){
+                        if(get_role(course.roles)=="instructor"){
+                                ins.push(course);
+                                continue;
+                        }
+                        if(get_role(course.roles)=="ta"){
+                                ta.push(course);
+                                continue;
+                        }
+                        stu.push(course);
+                }
+                if(ta.length==0)
+                        document.querySelector("#ta_courses").innerHTML = "No course in list";
+                if(stu.length==0)
+                        document.querySelector("#stu_courses").innerHTML = "No course in list";
+
+
+                for (course of ta){
+                        console.log("course",course)
+                        console.log(course.course_title);
+                        let link = "home/"+course.course_id+"/assignments"
+                        console.log(link)
+                        let li = document.createElement("li");
+                        li.classList.add("list-group-item");
+                        let a_link = document.createElement("a");
+                        a_link.href = link ;
+                        a_link.classList.add("list-group-item-action");
+                        a_link.innerHTML = course.course_number+ ' : ' + course.course_title;
+                        li.appendChild(a_link);                        
+                        document.querySelector("#ta_courses").appendChild(li);
+                }
+
+                for (course of stu){
+                        console.log("course",course)
+                        console.log(course.course_title);
+                        let link = "home/"+course.course_id+"/assignments"
+                        console.log(link)
+                        let li = document.createElement("li");
+                        li.classList.add("list-group-item");
+                        let a_link = document.createElement("a");
+                        a_link.href = link ;
+                        a_link.classList.add("list-group-item-action");
+                        a_link.innerHTML = course.course_number+ ' : ' + course.course_title;
+                        li.appendChild(a_link);                        
+                        document.querySelector("#stu_courses").appendChild(li);
+                }
+
+        };
+        request.send();
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}

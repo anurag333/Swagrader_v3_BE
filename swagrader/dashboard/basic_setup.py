@@ -34,7 +34,7 @@ class Setup(APIView):
                 email='student-'+str(i)+'@iitk.ac.in', password=1234, institute_id=180772+i))
         for i in range(3):
             ta.append(User.objects.create_user(
-                email='ta-'+str(i)+'@iitk.ac.in', password=1234))
+                email='ta-'+str(i)+'@iitk.ac.in', password=1234, global_ta_privilege=True))
 
         instructors.append(User.objects.create_user(
             email='instructor@iitk.ac.in', password=1234, global_instructor_privilege=True))
@@ -62,7 +62,7 @@ class Setup(APIView):
 
         pdf = request.data.get('pdf')
         publish_date = (datetime.now() - timedelta(days=2))
-        submission_deadline = (datetime.now() + timedelta(days=1))
+        submission_deadline = (datetime.now() + timedelta(minutes=4))
         assign_data = {
             'title': 'trial assignment',
             'pdf': pdf,
@@ -81,12 +81,12 @@ class Setup(APIView):
                 "max_marks": 10.0,
                 "min_marks": 0,
                 "sub_questions": [
-                    {
-                        "sno": 1,
-                        "title": "the only subquestion",
-                        "max_marks": 10.0,
-                        "min_marks": 0
-                    }
+                    # {
+                    #     "sno": 1,
+                    #     "title": "the only subquestion",
+                    #     "max_marks": 10.0,
+                    #     "min_marks": 0
+                    # }
                 ]
             },
             {
@@ -134,7 +134,7 @@ class Setup(APIView):
                 ques_id = q['qid']
                 ques = assign.questions.get(ques_id=ques_id)
                 qsub = QuestionSubmission.objects.create(
-                    submission=submissions[-1], question=ques, pdf=filename+'.pdf')
+                    submission=submissions[-1], question=ques, pdf=pdf)
 
         assign.current_status = 'method_selected'
         assign.published_for_subs = False
@@ -149,7 +149,14 @@ class Setup(APIView):
         pg_profile.peergraders.set(tuple(students))
         pg_profile.save()
         print('#pg profile =', AssignmentPeergradingProfile.objects.all().count())
+        print(assign_outline_detail)
+        print(type(assign_outline_detail))
         for ques in assign_outline_detail:
+            if(len(ques['sub_questions']) == 0):
+                question = Question.objects.get(ques_id=ques['qid'])
+                for i in range(int(ques['max_marks'])+1):
+                    GlobalRubric.objects.create(
+                        question=question, marks=i, description=f'give {i} marks')
             for sq in ques['sub_questions']:
                 sqid = sq['sqid']
                 sub_ques = SubQuestion.objects.get(sques_id=sqid)
@@ -160,7 +167,7 @@ class Setup(APIView):
         URL = f"http://127.0.0.1:8000/dashboard/courses/{course.course_id}/assignments/{assign.assign_id}/start-grading"
         print(URL)
 
-        time.sleep(10)
+        time.sleep(15)
         assign.current_status = 'rubric_set'
         assign.save()
 
@@ -219,6 +226,7 @@ def purge(request):
         User.objects.filter(email='ta-'+str(i)+'@iitk.ac.in').delete()
 
     course = Course.objects.filter(course_title='Trial course').delete()
+    Marks.objects.all().delete()
 
     return Response({'message': 'purged for setup'}, status=200)
 

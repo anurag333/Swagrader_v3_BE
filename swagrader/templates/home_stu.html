@@ -1,0 +1,45 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Dashboard</h2>
+</br></br>
+
+<div class="border border-info p-3">
+<h2 class="text-success p-3"> Student Courses</h2>
+<ul class="list-group bg-light p-5" id="stu_courses"></ul>
+</div>
+
+<script type="text/javascript">
+
+        const request = new XMLHttpRequest();
+         request.open("GET", "/dashboard");
+        request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                console.log("messgae loading");
+                console.log(data);
+                
+                if(data.courses.length==0)
+                        document.querySelector("#stu_courses").innerHTML = "No course in list";
+
+                for (course of data.courses) {
+                        console.log("course",course)
+                        console.log(course.course_title);
+                        let link = "home/"+course.course_id+"/assignments"
+                        console.log(link)
+                        let li = document.createElement("li");
+                        li.classList.add("list-group-item");
+                        let a_link = document.createElement("a");
+                        a_link.href = link ;
+                        a_link.classList.add("list-group-item-action");
+                        a_link.innerHTML = course.course_number+ ' : ' + course.course_title;
+                        li.appendChild(a_link);                        
+                        document.querySelector("#stu_courses").appendChild(li);
+                }
+
+        };
+        const data = new FormData();
+        {% comment %} data.append("channel_name", channel_name); {% endcomment %}
+        request.send(data);
+</script>
+{% endblock content %} {% comment %} {% block script %}
+<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
+{% endblock script %} {% endcomment %}
