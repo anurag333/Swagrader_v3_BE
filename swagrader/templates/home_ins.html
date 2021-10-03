@@ -171,29 +171,28 @@ Add New Course
         loadData();
 
 
-                document.getElementById("btn").onclick = function(){
-                        var form = document.getElementById('form1');
-                        var formData = new FormData(form);
-                        console.log("formData", formData);
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('POST', '/dashboard/courses/create', true);
-                        xhr.onload = () => {
-                                const data = JSON.parse(xhr.responseText);
-                                console.log("res",xhr.statusText)
-                                console.log("messgae loading");
-                                console.log(data);
-                                if(xhr.statusText.toString() == "Created"){
-                                        document.getElementById("alert").innerHTML ='<div class="alert alert-success alert-dismissible fade show" role="alert">course created successfully</div>';
-                                        loadData();
-                                        document.getElementById("form1").reset();
-                                }
-                                else{
-                                        document.getElementById("alert").innerHTML ='<div class="alert alert-danger alert-dismissible fade show" role="alert">some error occured during the course creation</div>';
-                                }
+        document.getElementById("btn").onclick = function(){
+                var form = document.getElementById('form1');
+                var formData = new FormData(form);
+                console.log("formData", formData);
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/dashboard/courses/create', true);
+                xhr.onload = () => {
+                        const data = JSON.parse(xhr.responseText);
+                        console.log("res",xhr.statusText)
+                        console.log("messgae loading");
+                        console.log(data);
+                        if(xhr.statusText.toString() == "Created"){
+                                document.getElementById("alert").innerHTML ='<div class="alert alert-success alert-dismissible fade show" role="alert">course created successfully</div>';
+                                loadData();
+                                document.querySelector("#ins_courses").innerHTML = "";
+                                document.getElementById("form1").reset();
                         }
-                        xhr.send(formData);
+                        else{
+                                document.getElementById("alert").innerHTML ='<div class="alert alert-danger alert-dismissible fade show" role="alert">some error occured during the course creation</div>';
+                        }
                 }
+                xhr.send(formData);
+        }
 </script>
-{% endblock content %} {% comment %} {% block script %}
-<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
-{% endblock script %} {% endcomment %}
+{% endblock content %}

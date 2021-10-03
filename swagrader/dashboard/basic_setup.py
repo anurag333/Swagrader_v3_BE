@@ -25,61 +25,101 @@ class Setup(APIView):
 
     def post(self, request):
         User = get_user_model()
-        admin = User.objects.create_superuser('admin@iitk.ac.in', '1234')
+        try:
+            admin = User.objects.create_superuser('admin@iitk.ac.in', '1234')
+        except:
+            print("fialed here 0")
         students = []
         ta = []
         instructors = []
-        for i in range(10):
-            students.append(User.objects.create_user(
-                email='student-'+str(i)+'@iitk.ac.in', password=1234, institute_id=180772+i))
-        for i in range(3):
-            ta.append(User.objects.create_user(
-                email='ta-'+str(i)+'@iitk.ac.in', password=1234, global_ta_privilege=True))
+        try:
+            for i in range(10):
+                students.append(User.objects.create_user(
+                    email='student-'+str(i)+'@iitk.ac.in', password=1234, institute_id=180772+i))
+        except:
+            print("fialed here 1")
+        try:
+            for i in range(3):
+                ta.append(User.objects.create_user(
+                    email='ta-'+str(i)+'@iitk.ac.in', password=1234, global_ta_privilege=True))
+        except:
+            print("fialed here 2")
+        try:
+            instructors.append(User.objects.create_user(
+                email='instructor@iitk.ac.in', password=1234, global_instructor_privilege=True))
+        except:
+            print("fialed here 3")
+        try:
+            for user in instructors:
+                EmailAddress.objects.create(
+                    email=user.email, user=user, verified=True, primary=True)
+        except:
+            print("fialed here 4")
+        try:
+            for user in ta:
+                EmailAddress.objects.create(
+                    email=user.email, user=user, verified=True, primary=True)
+        except:
+            print("fialed here 5")
+        try:
+            for user in students:
+                EmailAddress.objects.create(
+                    email=user.email, user=user, verified=True, primary=True)
+        except:
+            print("fialed here 6")
 
-        instructors.append(User.objects.create_user(
-            email='instructor@iitk.ac.in', password=1234, global_instructor_privilege=True))
+            
+        return Response({"message": "done"}, status=200)
 
-        for user in chain(instructors, students, ta):
-            EmailAddress.objects.create(
-                email=user.email, user=user, verified=True, primary=True)
+        ################################################
 
         course_data = {
-            "course_number": "TRY101",
+            "course_number": "New test course",
             "course_title": "Trial course",
             "term": "Summer",
             "year": 2022,
             "entry_restricted": False
         }
+        try:
+            course = Course.objects.create(**course_data, entry_key=''.join(
+                [random.choice(string.ascii_letters + string.digits) for n in range(7)]))
+        except:
+            print("fialed here 7")
+        try:
+            for instructor in instructors:
+                course.instructors.add(instructor)
+            for student in students:
+                course.students.add(student)
+            for t in ta:
+                course.teaching_assistants.add(t)
+        except:
+            print("fialed here 8")
 
-        course = Course.objects.create(**course_data, entry_key=''.join(
-            [random.choice(string.ascii_letters + string.digits) for n in range(7)]))
-        for instructor in instructors:
-            course.instructors.add(instructor)
-        for student in students:
-            course.students.add(student)
-        for t in ta:
-            course.teaching_assistants.add(t)
 
         pdf = request.data.get('pdf')
         publish_date = (datetime.now() - timedelta(days=2))
         submission_deadline = (datetime.now() + timedelta(minutes=4))
         assign_data = {
-            'title': 'trial assignment',
+            'title': 'trial assignment gg',
             'pdf': pdf,
             'publish_date': publish_date,
             'submission_deadline': submission_deadline,
             'allow_late_subs': False,
         }
+        try:
+            assign = Assignment.objects.create(**assign_data, course=course)
+            assign.course = course
+            assign.save()
+        except:
+            print("fialed here 9")
 
-        assign = Assignment.objects.create(**assign_data, course=course)
-        assign.course = course
-        assign.save()
         outline_data = [
             {
                 "sno": 2,
                 "title": "second question",
                 "max_marks": 10.0,
                 "min_marks": 0,
+                "description": "this is description of q2",
                 "sub_questions": [
                     # {
                     #     "sno": 1,
@@ -94,6 +134,7 @@ class Setup(APIView):
                 "title": "first question",
                 "max_marks": 10.0,
                 "min_marks": 0,
+                "description": "this is description of q2",
                 "sub_questions": [
                     {
                         "sno": 2,
@@ -110,12 +151,15 @@ class Setup(APIView):
                 ]
             }
         ]
-
-        for ques in outline_data:
-            sub_questions = ques.pop('sub_questions')
-            question = Question.objects.create(**ques, parent_assign=assign)
-            for sq in sub_questions:
-                SubQuestion.objects.create(**sq, parent_ques=question)
+        try:
+            for ques in outline_data:
+                sub_questions = ques.pop('sub_questions')
+                question = Question.objects.create(
+                    **ques, parent_assign=assign)
+                for sq in sub_questions:
+                    SubQuestion.objects.create(**sq, parent_ques=question)
+        except:
+            print("fialed here 10")
 
         assign.current_status = 'published'
         assign.published_for_subs = True
@@ -218,6 +262,7 @@ class Setup(APIView):
 @api_view(['GET'])
 def purge(request):
     User = get_user_model()
+
     User.objects.filter(email='admin@iitk.ac.in').delete()
     User.objects.filter(email='instructor@iitk.ac.in').delete()
     for i in range(10):
@@ -225,8 +270,11 @@ def purge(request):
     for i in range(3):
         User.objects.filter(email='ta-'+str(i)+'@iitk.ac.in').delete()
 
+    User.objects.all().delete()
+
     course = Course.objects.filter(course_title='Trial course').delete()
     Marks.objects.all().delete()
+    AssignmentPeergradingProfile.objects.all().delete()
 
     return Response({'message': 'purged for setup'}, status=200)
 

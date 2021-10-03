@@ -30,7 +30,7 @@ class AssignmentListCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
         fields = ['assign_id', 'course', 'title', 'pdf', 'publish_date', 'submission_deadline',
-                  'allow_late_subs', 'late_sub_deadline', 'published_for_subs', 'status', 'grading_methodology', 'graded']
+                  'allow_late_subs', 'late_sub_deadline', 'published_for_subs', 'status', 'grading_methodology', 'graded', 'regrading_requests_deadline', 'regrading_deadline']
 
     def get_status(self, assignment):
         return assignment.current_status
@@ -203,7 +203,7 @@ class QuestionSerializer(WritableNestedModelSerializer):
     class Meta:
         model = Question
         fields = ['parent_assign', 'sno', 'ques_id', 'title',
-                  'min_marks', 'max_marks', 'global_rubrics', 'sub_questions']
+                  'description', 'min_marks', 'max_marks', 'global_rubrics', 'sub_questions', ]
 
     def get_global_rubrics(self, ques):
         rubrics = ques.g_rubrics.all()

@@ -90,19 +90,24 @@ class Assignment(models.Model):
     average = models.FloatField(default=0)
     regrading_requests = models.BooleanField(default=True)
     regrading_requests_deadline = models.DateTimeField(null=True)
+    regrading_deadline = models.DateTimeField(null=True)
     grading_methodology = models.CharField(max_length=2, choices=(
         ('pg', 'Peergrading'), ('ng', 'Normal grading')), default='pg')
     graded = models.BooleanField(default=False)
+    outline_set = models.BooleanField(default=False)
     current_status = models.CharField(max_length=20, choices=(
         ('set_outline', 'Set outline'),
         ('outline_set', 'publish assign'),
         ('published', 'close submissions'),
         ('subs_closed', 'Select grading method'),
         ('method_selected', 'Stage for grading'),
-        ('grading_started', 'Grading Started'),
         ('rubric_set', 'start probe grading'),
+        ('grading_started', 'Grading Started'),
         ('papers_distributed', 'start peergrading'),
-        ('grading_ended', 'assignment finished')
+        ('regrading_req_start', 'start taking regrading requests'),
+        ('start_regrading', 'start regrading '),
+        ('grading_ended', 'assignment finished'),
+        ('bonus_calculated', 'bonus has been calculated'),
     ), default='set_outline')
 
     def __str__(self):
@@ -130,22 +135,24 @@ class AssignmentPeergradingProfile(models.Model):
     assignment = models.ForeignKey(
         Assignment, on_delete=models.CASCADE, related_name="assignment_peergrading_profile")
     param_mu = models.FloatField(
-        help_text='Parameter to be set as per the TRUPEQA algorithm', default=16.234)
+        help_text='Parameter to be set as per the TRUPEQA algorithm', default=1)
     param_gm = models.FloatField(
-        help_text='Parameter to be set as per the TRUPEQA algorithm', default=1.234)
+        help_text='Parameter to be set as per the TRUPEQA algorithm', default=2)
     peerdist = models.IntegerField(
-        default=6, help_text='This is the number of copies that will be distributed to peers.')
+        default=4, help_text='This is the number of copies that will be distributed to peers.')
     probing_deadline = models.DateTimeField(null=True, blank=True)
     peergrading_deadline = models.DateTimeField(null=True, blank=True)
     n_probes = models.IntegerField(
         default=20, help_text='These are the number of probes you want to set for this assignment.')
-    alpha = models.IntegerField(default=5, help_text='alpha value')
+    alpha = models.FloatField(default=5, help_text='alpha value')
     instructor_graders = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 'in_pgraded_assignments')
     peergraders = models.ManyToManyField(
         settings.AUTH_USER_MODEL, related_name='st_pgraded_assignments', blank=True)
     ta_graders = models.ManyToManyField(
         settings.AUTH_USER_MODEL, related_name='ta_pgraded_assignments', blank=True)
+    ta_for_probes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, related_name='ta_pgraded_assignments_probe_check', blank=True)
 
 
 """
@@ -161,6 +168,7 @@ class Question(models.Model):
     title = models.CharField(max_length=200)
     min_marks = models.FloatField(default=0)
     max_marks = models.FloatField(default=0)
+    description = models.CharField(max_length=5000, blank=True, null=True)
 
     def __str__(self):
         return '{0}: Ques_{1}'.format(self.parent_assign.title, self.sno)
@@ -222,7 +230,7 @@ class GlobalRubric(models.Model):
     question = models.ForeignKey(
         Question, on_delete=models.CASCADE, related_name='g_rubrics')
     description = models.CharField(max_length=100)
-    marks = models.IntegerField(default=0)
+    marks = models.FloatField(default=0)
 
 
 class GlobalSubrubric(models.Model):
@@ -230,7 +238,7 @@ class GlobalSubrubric(models.Model):
     sub_question = models.ForeignKey(
         SubQuestion, on_delete=models.CASCADE, related_name='g_subrubrics')
     description = models.CharField(max_length=100)
-    marks = models.IntegerField(default=0)
+    marks = models.FloatField(default=0)
 
 
 class ProbeSubmission(models.Model):
@@ -339,7 +347,7 @@ class Marks(models.Model):
     total_marks = models.FloatField(default=0)
     regrade = models.IntegerField(default=0)
     regrader = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='get_regrading_ques', default=None)
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='get_regrading_ques', blank=True, null=True)
 
 
 class R_star_ques(models.Model):

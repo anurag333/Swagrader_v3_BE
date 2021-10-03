@@ -1,0 +1,63 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Summit Regrading Requests</h2>
+
+<div class="card" id="main"></div>
+<div style="opacity: 0" id="ids">
+        {% for q in ques%}
+        <p id="{{q}}"></p>
+        {%endfor%}
+</div>
+<script type="text/javascript">
+        var regradingRequest = function (e) {
+                but = e.target;
+                id = but.id;
+                const req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/question/" + id.toString() + "/regrade", true);
+                req.onload = function () {
+                        location.reload();
+                };
+                req.send();
+        };
+
+        const request = new XMLHttpRequest();
+        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/outline", true);
+        request.onload = function () {
+                const data = JSON.parse(request.responseText);
+                console.log("data", data);
+                let arr = [];
+                let div = document.getElementById("ids");
+                for (let p in div.children) {
+                        console.log("p", p);
+                        arr.push(div.children[p].id);
+                }
+                console.log("arr", arr);
+                for (let q in data) {
+                        ques = data[q];
+                        let main = document.getElementById("main");
+                        let div = document.createElement("div");
+                        div.classList.add("card");
+                        let button = document.createElement("button");
+                        button.classList.add("btn-primary");
+                        button.classList.add("btn");
+                        button.innerHTML = "Send Regrading Request";
+                        button.onclick = regradingRequest;
+                        button.id = ques["ques_id"];
+                        let h = document.createElement("h4");
+                        h.classList.add("text-success");
+                        h.innerHTML = "Question " + (parseInt(q) + 1).toString() + " : ";
+
+                        if (arr.indexOf(ques["ques_id"].toString()) > -1) {
+                                button.setAttribute("disabled", true);
+                                h.innerHTML = "Question " + (parseInt(q) + 1).toString() + " : (Regrading Request already sent)";
+                        }
+
+                        main.appendChild(div);
+                        main.appendChild(document.createElement("br"));
+                        div.appendChild(h);
+                        div.appendChild(button);
+                }
+        };
+        request.send();
+</script>
+{% endblock content %}

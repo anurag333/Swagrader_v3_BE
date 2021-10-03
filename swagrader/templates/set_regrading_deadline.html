@@ -1,0 +1,70 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Set Regrading Deadlines</h2>
+
+<div id="for_form">
+        <div class="list-group border border-info bg-light p-5">
+                <div id="alert"></div>
+                <h1 class="text-success p-3">Set Regrading Deadlines</h1>
+
+                <form id="form1" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                                <label for="regrading_requests_deadline">Regrading Requests Deadline</label>
+                                <input type="datetime-local" id="regrading_requests_deadline" name="regrading_requests_deadline" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                                <label for="regrading_deadline">Regrading Deadline</label>
+                                <input type="datetime-local" id="regrading_deadline" name="regrading_deadline" class="form-control" />
+                        </div>
+
+                        <button type="button" class="btn btn-primary" id="btn">Submit</button>
+                </form>
+        </div>
+</div>
+
+<script type="text/javascript">
+        var request = new XMLHttpRequest();
+        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}");
+        request.onload = function () {
+                const data = JSON.parse(request.responseText);
+                console.log("data", data);
+                if (data["regrading_requests_deadline"]) {
+                        document.getElementById("regrading_requests_deadline").value = data["regrading_requests_deadline"].substring(
+                                0,
+                                data["regrading_requests_deadline"].length - 6
+                        );
+                }
+                if (data["regrading_deadline"]) {
+                        document.getElementById("regrading_deadline").value = data["regrading_requests_deadline"].substring(
+                                0,
+                                data["regrading_deadline"].length - 6
+                        );
+                }
+        };
+        request.send();
+
+        document.getElementById("btn").onclick = function () {
+                var form = document.getElementById("form1");
+                var formData = new FormData(form);
+                console.log("formData", formData.entries());
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/set-deadline", true);
+                xhr.onload = () => {
+                        const data = JSON.parse(xhr.responseText);
+                        console.log("messgae loading");
+                        console.log(data);
+                        if (data["message"] == "positive") {
+                                document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">Successfully Done</div>';
+                                document.getElementById("form1").reset();
+                        } else {
+                                document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">some error occured</div>';
+                        }
+                };
+                xhr.send(formData);
+        };
+</script>
+{% endblock content %}

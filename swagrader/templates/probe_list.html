@@ -1,0 +1,48 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>List of Probe Papers to Check</h2>
+
+<div class="card card-body text-danger" id="main_div">
+        <ul class="list-group bg-light p-5" id="probes"></ul>
+</div>
+
+<script type="text/javascript">
+        var probesToCheck = function () {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
+                request.onload = () => {
+                        console.log("instructor one");
+                        const data = JSON.parse(request.responseText);
+                        console.log("probes");
+                        console.log(data);
+                        if ("message" in data) {
+                                return;
+                        }
+                        if (data.length == 0) {
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                li.innerHTML = "You haven't got any probe papers to Check";
+                                document.querySelector("#probes").appendChild(li);
+                        }
+                        for (paper in data) {
+                                console.log(paper);
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                let link = "";
+                                link += "grade-probe";
+                                str = data[paper];
+                                link += "/" + str;
+                                console.log(link);
+                                let a_link = document.createElement("a");
+                                a_link.href = link;
+                                a_link.classList.add("list-group-item-action");
+                                a_link.innerHTML = "grade probe paper : " + (parseInt(paper) + 1).toString();
+                                li.appendChild(a_link);
+                                document.querySelector("#probes").appendChild(li);
+                        }
+                };
+                request.send();
+        };
+        probesToCheck();
+</script>
+{% endblock content %}

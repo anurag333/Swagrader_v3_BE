@@ -1,93 +1,804 @@
 {% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
 
-<h2>home page.</h2>
-<div>
-        <iframe src="{{pdf.url}}" style="width: 100%; height: 700px"></iframe>
+
+
+<div class="container">
+  <div class="row">
+        <div id="question_paper" class="col-sm card">
+                <div style="width: 100%; height: 600px">
+                        <h3>Assignment Questions:</h3>
+                        <iframe src="{{pdf.url}}" style="width: 90%; height: 90%"></iframe>
+                </div>
+        </div>
+    <div class="col-sm card" id = "assign_details">
+        <h3>Assignment Details:</h3>
+        {% comment %} <button class="btn btn-primary" id="update_assign">Update Assignment Details</button></br> {% endcomment %}
+    </div>
+  </div>
 </div>
-<div id="peer_papers" class="list-group bg-light p-5"></div>
+
+
+
+</br>
+
+<div id="tools" class="card card-body p-3">
+<div id ="alert" class = "alert-info"></div>
+<h6>Available actions :</h6></br>
+</div>
+
+
+<div>
+        <form
+                method="GET"
+                action="/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/close-probing"
+                style="opacity: 0"
+                enctype="multipart/form-data"
+        >
+                
+                <div class="form-group low-margin">
+                        <button class="btn btn-outline-info" type="submit" id="push_button">Submit</button>
+                </div>
+        </form>
+</div>
 
 <script type="text/javascript">
+
+        var num_clicks = 0;
+
+        
+        
+
+        var setOutline = function () {
+                let tools = document.getElementById("tools");
+                let setOutlineButton = document.createElement("button");
+                setOutlineButton.classList.add("btn");
+                setOutlineButton.classList.add("btn-primary");
+                setOutlineButton.classList.add("btn-sm");
+                setOutlineButton.innerHTML = "Set Outline";
+                setOutlineButton.type = "button";
+                setOutlineButton.onclick = () => {
+                        window.open(window.location.href + "/outline","_self");
+                };
+                tools.appendChild(setOutlineButton);
+                tools.appendChild(document.createElement("br"));
+        };
+        var publish = function () {
+                let tools = document.getElementById("tools");
+                let publishButton = document.createElement("button");
+                publishButton.classList.add("btn");
+                publishButton.classList.add("btn-primary");
+                publishButton.classList.add("btn-sm");
+                publishButton.innerHTML = "Publish Assignment Now";
+                publishButton.type = "button";
+                publishButton.onclick = () => {
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/publish");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log(data);
+                                if(data.result == "positive"){
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                const syncWait = ms => {
+                                        const end = Date.now() + ms
+                                        while (Date.now() < end) continue;
+                                }
+                                syncWait(4000);
+                                if(data.result == "positive")location.reload();
+                        }
+                        req.send();
+                };
+                tools.appendChild(publishButton);
+                tools.appendChild(document.createElement("br"));
+        };
+        var closeSubmission = function () {
+                let tools = document.getElementById("tools");
+                let closeSubmissionButton = document.createElement("button");
+                closeSubmissionButton.classList.add("btn");
+                closeSubmissionButton.classList.add("btn-primary");
+                closeSubmissionButton.classList.add("btn-sm");
+                closeSubmissionButton.innerHTML = "Close Submissions Now";
+                closeSubmissionButton.type = "button";
+                closeSubmissionButton.onclick = () => {
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/close-submissions");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log(data);
+                                if(data.result == "positive"){
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                const syncWait = ms => {
+                                        const end = Date.now() + ms
+                                        while (Date.now() < end) continue;
+                                }
+                                syncWait(4000);
+                                if(data.result == "positive")location.reload();
+                        }
+                        req.send();
+                };
+                tools.appendChild(closeSubmissionButton);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var selectMethod = function () {
+                let tools = document.getElementById("tools");
+                let chooseGrading = document.createElement("button");
+                chooseGrading.classList.add("btn");
+                chooseGrading.classList.add("btn-primary");
+                chooseGrading.classList.add("btn-sm");
+                chooseGrading.innerHTML = "Choose Grading Method";
+                chooseGrading.type = "button";
+                chooseGrading.onclick = () => {
+                        window.open(window.location.href + "/method-select","_self");
+                };
+                tools.appendChild(chooseGrading);
+                tools.appendChild(document.createElement("br"));
+        }
+        {% comment %} document.getElementById("updade_assign").onclick = updateAssignmentsDetails; {% endcomment %}
+
+
+
+        var startGrading = function(){
+
+                const req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/meta");
+                req.onload = () =>{
+                        const data = JSON.parse(req.responseText);
+                        console.log("asn meta details",data);
+                        
+                        if(data['peergrading_deadline'] && data['probing_deadline']){
+                                document.getElementById("alert").innerHTML =
+                                '<div class="alert alert-success alert-dismissible fade show" role="alert">'+'make sure you got the no. of probes and other details right'+'</div>';
+                                
+                        }
+                        else{
+                                document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+'Please update Assignment configration first.'+'</div>';
+                                return;
+                        }
+
+
+
+
+                        let tools = document.getElementById("tools");
+                        let start_grading = document.createElement("button");
+                        start_grading.classList.add("btn");
+                        start_grading.classList.add("btn-primary");
+                        start_grading.classList.add("btn-sm");
+                        start_grading.innerHTML = "Distribute Probe Papers";
+                        start_grading.type = "button";
+                        start_grading.onclick = () => {
+                                const req = new XMLHttpRequest();
+                                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/start-grading");
+                                req.onload = () =>{
+                                        const data = JSON.parse(req.responseText);
+                                        console.log(data);
+                                        if(data.result == "positive"){
+                                                document.getElementById("alert").innerHTML =
+                                                '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                        }
+                                        else{
+                                                document.getElementById("alert").innerHTML =
+                                                '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                        }
+                                        const syncWait = ms => {
+                                                const end = Date.now() + ms
+                                                while (Date.now() < end) continue;
+                                        }
+                                        syncWait(4000);
+                                        if(data.result == "positive")location.reload();
+                                }
+                                req.send();
+                        };
+                        tools.appendChild(start_grading);
+                        tools.appendChild(document.createElement("br"));
+                        }
+                        req.send();
+        }
+
+        var setRubric = function () {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/create-rubric");
+                request.onload = () =>{
+                        location.reload();
+                }
+                request.send();
+                {% comment %} let tools = document.getElementById("tools");
+                let set_rubric = document.createElement("button");
+                set_rubric.classList.add("btn");
+                set_rubric.classList.add("btn-primary");
+                set_rubric.classList.add("btn-sm");
+                set_rubric.innerHTML = "Set Rubrics";
+                set_rubric.type = "button";
+                set_rubric.onclick = () => {
+                        window.open(window.location.href + "/set-rubric","_self");
+                };
+                tools.appendChild(set_rubric);
+                tools.appendChild(document.createElement("br")); {% endcomment %}
+        }
+
+        var submitAssignment = function(){
+                let tools = document.getElementById("tools");
+                let submitAssignment = document.createElement("button");
+                submitAssignment.classList.add("btn");
+                submitAssignment.classList.add("btn-primary");
+                submitAssignment.classList.add("btn-sm");
+                submitAssignment.innerHTML = "Submit Assignment";
+                submitAssignment.type = "button";
+                submitAssignment.onclick = () => {
+                        window.open(window.location.href + "/submit-assignment","_self");
+                };
+                tools.appendChild(submitAssignment);
+                tools.appendChild(document.createElement("br"));
+        };
+
+        var createAssignmentRoster = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Create Assignment roster";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/assign-roster","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        var updateAssignmentsDetails = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Update assignment details";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/update-assign-details","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+       
+
+        var rosterSet = async function () {
+                return new Promise((resolve,reject)=>{
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/is-assign-roster");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log("is assign",data);
+                                if(data["result"].toString()=="positive")resolve('Success')
+                                else reject("failed")
+                        }
+                        req.send();
+                })
+        }
+
+        var initial = async function(){
+                createAssignmentRoster();
+                rosterSet().then((e)=>{
+                        console.log("hdf")
+                        setOutline();
+                })    
+                .catch((e)=>{
+                        console.log("error")
+                })
+        } 
+
+        var waitForGrading = function(strr){
+                 document.getElementById("alert").innerHTML =
+                                                '<div class="alert alert-success alert-dismissible fade show" role="alert">'+"wait for "+strr+" to start"+'</div>';
+        }
+
+
+        
+
+        var loadDetails = function(){
+                const req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}");
+                req.onload = () =>{
+                        const data = JSON.parse(req.responseText);
+                        console.log("asn loaddetails",data);
+                        var parent = document.getElementById("assign_details");
+                        for(let k in data){
+                                if(['title','submission_deadline','status','publish_date','graded','allow_late_subs','late_sub_deadline'].indexOf(k)>-1)
+                                {
+                                        
+                                        let p = document.createElement("p");    
+                                        p.innerHTML = k + " : " + data[k];
+                                        p.classList.add("card");
+                                        p.classList.add("p-1");
+                                        p.classList.add("text-info");
+                                        parent.appendChild(p);
+                                }
+                        }
+                        try
+                        {
+                                
+                                const request = new XMLHttpRequest();
+                                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/meta");
+                                request.onload = () =>{
+                                        const data1 = JSON.parse(request.responseText);
+                                        console.log("asn meta load details",data1);
+                                        
+                                        for(let k in data1){
+                                                if(k=="probing_deadline"){
+                                                        let cur = new Date();
+                                                        console.log("date now",cur);
+                                                        if(data1[k])
+                                                        {       
+                                                                let deadline = new Date((data1[k].toString()).substring(0,data1[k].length-1));
+                                                                console.log("deadline now",deadline)
+                                                                if(cur> deadline){
+                                                                        
+                                                                        let but = document.getElementById("close-probing")
+                                                                        if(but){
+                                                                                but.remove();
+                                                                        }
+                                                                        but = document.getElementById("check-probe-status")
+                                                                        if(but){
+                                                                                but.remove();
+                                                                        }
+                                                                        but = document.getElementById("grade-probe-papers")
+                                                                        if(but){
+                                                                                but.remove();
+                                                                        }
+                                                                        if(data["status"] == "grading_started")
+                                                                        {
+                                                                                let tools = document.getElementById("tools");
+                                                                                let button = document.createElement("button");
+                                                                                button.innerHTML = "Distribute Peer Papers";
+                                                                                button.type = "button";
+                                                                                button.classList.add("btn-primary");
+                                                                                button.classList.add("btn-primary");
+                                                                                button.classList.add("m-1")
+                                                                                button.id = "distribute_peer_papers"
+                                                                                button.onclick = ()=>{
+                                                                                        const req = new XMLHttpRequest();
+                                                                                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/start-peergrading")
+                                                                                        req.onload = function(){
+                                                                                                const data = JSON.parse(req.responseText)
+                                                                                                document.getElementById("alert").innerHTML = data["message"]
+                                                                                                const syncWait = ms => {
+                                                                                                        const end = Date.now() + ms
+                                                                                                        while (Date.now() < end) continue;
+                                                                                                }
+                                                                                                syncWait(4000);
+                                                                                                location.reload();       
+
+                                                                                        }
+                                                                                        req.send()
+                                                                                }
+                                                                                tools.appendChild(button);
+                                                                                tools.appendChild(document.createElement("br"));
+                                                                        }
+                                                                        
+
+                                                                }
+                                                        }
+                                                }
+                                                let p = document.createElement("p");    
+                                                p.innerHTML = k + " : " + data1[k];
+                                                p.classList.add("card");
+                                                p.classList.add("p-1");
+                                                p.classList.add("text-info");
+                                                parent.appendChild(p);
+                                        }
+                                }
+                                request.send();
+                        }
+                        catch(error){
+                                console.log("ere")
+                                
+                        }
+                        
+                        
+                }
+                req.send();
+        }
+        
+        var loadStuDetails = function () {
+                var parent = document.getElementById("assign_details");
+
+                let p2 = document.createElement("p");    
+                p2.innerHTML = "Assignment : {{assign_name}}";
+                p2.classList.add("card");
+                p2.classList.add("p-1");
+                p2.classList.add("text-info");
+                parent.appendChild(p2);
+
+                let p = document.createElement("p");    
+                if("{{probing_deadline}}"!="None")    
+                        p.innerHTML = "Peergrading starts after : {{probing_deadline}}";
+                else
+                        p.innerHTML = "Peergrading starts after : not yet set by Instructor";
+                p.classList.add("card");
+                p.classList.add("p-1");
+                p.classList.add("text-info");
+                parent.appendChild(p);
+
+                let p1 = document.createElement("p");
+                if("{{peergrading_deadline}}"!="None")    
+                        p1.innerHTML = "Peergrading ends at : {{peergrading_deadline}}";
+                else
+                        p1.innerHTML = "Peergrading ends at : not yet set by Instructor";
+                p1.classList.add("card");
+                p1.classList.add("p-1");
+                p1.classList.add("text-info");
+                parent.appendChild(p1);
+        }
+
+        var probeGrading = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "grade probe papers";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "grade-probe-papers"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/probe-list","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var getProbingStatus = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Check Probe Checking progress";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "check-probe-status"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/probe-status","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var closeProbing = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Close Probe Checking";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "close-probing"
+                button.onclick = ()=>{
+                       document.getElementById("push_button").click();
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        
+        var peerGrade = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Check Peer Papers";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "calc_score"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/peer-list","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var finishPeergradingAndCalculateScore = function() {
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Finish Peergrading And Calculate Score";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "get_peer_papers"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/calc-score","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var seeGrades = function() {
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "See Grades";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "see_grades"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/see-grades","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        var setRegradingDeadlines = function() {
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Set Regading Deadlines";
+                button.type = "button";
+                button.classList.add("btn-warning");
+                button.classList.add("m-1")
+                button.id = "set_deadline"
+                button.onclick = ()=>{
+                        window.open(window.location.href+"/set-regrading-deadline","_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var stopRegradingRequests = function() {
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Stop Regrading Requests";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.id = "stop_regrading_requests"
+                button.onclick = ()=>{
+                        console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/set-deadline")
+                        const req = new XMLHttpRequest();
+                        req.open("GET","/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/set-deadline")
+                        req.send();
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var stopRegrading = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Stop Regrading";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        const req = new XMLHttpRequest();
+                        req.open("GET","/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/stop-regrading")
+                        req.onload = function() {
+                                console.log(req.statusText);
+                                const data = JSON.parse(req.responseText)
+                                console.log(data)
+                                if(data["result"] =="positive") {
+                                        document.getElementById("alert").innerHTML = "successfully done"
+                                        location.reload();
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML = "some error occured"
+                                }
+                        }
+                        req.send();
+                        
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var showMarks = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "See Marks";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        windows.open(location.href +"/student-marks","_self")
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        var submitRegradingRequest = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Submit Regrading request";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        window.open(window.location.href + '/regrading-request',"_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var getRegradingPapers = function() {
+                console.log("getre")
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Get Regrading Papers";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        window.open(window.location.href + '/regrading-request-papers',"_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        
+        var calculateBonus = function() {
+                console.log("getre")
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Calculate TRUPEQA Bonus";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        const req = new XMLHttpRequest();
+                        req.open("GET","/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/calculate-bonus")
+                        req.onload = function() {
+                                console.log(req.statusText);
+                                const data = JSON.parse(req.responseText)
+                                console.log(data)
+                                if(data["result"] =="positive") {
+                                        document.getElementById("alert").innerHTML = "successfully done"
+                                        location.reload();
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML = "some error occured"
+                                }
+                        }
+                        req.send();
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+
+
+        var assignRegraders = function(){
+                console.log("here")
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/assign-regraders",true);
+                request.onload = function(){
+                        console.log(request.statusText)
+                        document.getElementById("alert").innerHTML ="regraders assigned"
+                }
+                request.send();
+        }
+        var selectTaForProbeGrading = function(){
+                let tools = document.getElementById("tools");
+                let button = document.createElement("button");
+                button.innerHTML = "Select Ta's for Probe grading";
+                button.type = "button";
+                button.classList.add("btn-primary");
+                button.classList.add("m-1")
+                button.onclick = ()=>{
+                        window.open(window.location.href + '/select-ta',"_self");
+                }
+                tools.appendChild(button);
+                tools.appendChild(document.createElement("br"));
+        }
+        
+        
         const req = new XMLHttpRequest();
         req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
         req.onload = () => {
                 const res = JSON.parse(req.responseText);
                 console.log(res);
-                {% comment %} const req_sub = new XMLHttpRequest();
-                req_sub.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit");
-                req_sub.onload = () => {
-                        const data = JSON.parse(req_sub.responseText);
-                        console.log("messgae get loading");
-                        console.log(data);
-                        if ("message" in data) {
-                                return;
-                        }
-                };
-                req_sub.send(); {% endcomment %}
+                console.log("st","{{assign_status}}","")
                 if (res["privilege"] == "student") {
-                        console.log("in this page");
-                        console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
-                        const request = new XMLHttpRequest();
-                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
-                        request.onload = () => {
-                                console.log("here also");
-                                const data = JSON.parse(request.responseText);
-                                console.log("messgae loading");
-                                console.log(data);
-                                if ("message" in data) {
-                                        return;
-                                }
-                                document.getElementById("peer_papers").innerHTML = "<h4>Peer Papers to check :</h4> </br>";
-                                for (paper in data) {
-                                        console.log(paper);
-                                        let li = document.createElement("li");
-                                        let link = "{{assign_id}}";
-                                        link += "/grade_peer";
-                                        str = data[paper];
-                                        let idx = str.indexOf('"paper":');
-                                        idx += 8;
-                                        console.log(idx);
-                                        console.log(str[idx]);
-                                        let strr = str.substring(idx, str.length - 1);
-                                        link += "/" + strr;
-                                        console.log(link);
-                                        li.innerHTML = '<li> <a href= "' + link + '">' + "grade peer paper" + "</a></li>";
-                                        document.querySelector("#peer_papers").appendChild(li);
-                                }
-                        };
-                        const data = new FormData();
-                        request.send(data);
+                        if ("{{assign_status}}" == "published"){ 
+                                submitAssignment();
+                                loadStuDetails();
+                        } else if (["subs_closed","method_selected","rubric_set","grading_started"].indexOf("{{assign_status}}") > -1) {
+                                waitForGrading("peergrading");
+                                loadStuDetails();
+                        } else if ("{{assign_status}}" == "papers_distributed") {
+                                peerGrade();
+                                loadStuDetails();
+                        }else if ("{{assign_status}}" == "regrading_req_start") {
+                                showMarks();
+                                submitRegradingRequest();
+                                loadStuDetails();
+                        }
                 }
-                if (res["privilege"] == "ta" || res["privilege"] == "instructor") {
-                        console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
-                        const request = new XMLHttpRequest();
-                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
-                        request.onload = () => {
-                                console.log("instructor one");
-                                const data = JSON.parse(request.responseText);
-                                console.log("probes");
-                                console.log(data);
-                                if ("message" in data) {
-                                        return;
-                                }
-                                for (paper in data) {
-                                        console.log(paper);
-                                        let li = document.createElement("li");
-                                        let link = "{{assign_id}}";
-                                        link += "/grade_probe";
-                                        str = data[paper];
-                                        link += "/" + str;
-                                        console.log(link);
-                                        li.innerHTML = '<li> <a href= "' + link + '">' + "grade probe paper" + "</a></li>";
-                                        document.querySelector("#peer_papers").appendChild(li);
-                                }
-                        };
-                        const data = new FormData();
-                        request.send(data);
+                if (res["privilege"] == "instructor") {
+                        if ("{{assign_status}}" == "set_outline" ) {
+                                initial();
+                                loadDetails();
+                        }else if ("{{assign_status}}" == "outline_set" ) {
+                                setOutline();
+                                publish();
+                                loadDetails();
+                        } 
+                         else if ("{{assign_status}}" == "published") {
+                                closeSubmission();
+                                loadDetails();
+                        } else if ("{{assign_status}}" == "subs_closed") {
+                                selectMethod();
+                                loadDetails();
+                        } else if ("{{assign_status}}" == "method_selected") {
+                                updateAssignmentsDetails();
+                                selectMethod();
+                                setRubric();
+                                loadDetails();
+                        }
+                        else if ("{{assign_status}}" == "rubric_set")
+                        {
+                                updateAssignmentsDetails();
+                                selectMethod();
+                                startGrading();
+                                selectTaForProbeGrading();
+                                loadDetails();
+                        }
+                        else if ("{{assign_status}}" == "grading_started") {
+                                probeGrading();
+                                {% comment %} getProbingStatus(); {% endcomment %}
+                                closeProbing();
+                                loadDetails();
+                        }
+                        else if ("{{assign_status}}" == "papers_distributed") {
+                                finishPeergradingAndCalculateScore();
+                                loadDetails();
+                        }
+                        else if ("{{assign_status}}" == "regrading_req_start") {
+                                document.getElementById("alert").innerHTML = "Please set Regrading Deadlines"
+                                setRegradingDeadlines();
+                                stopRegradingRequests();
+                                seeGrades();
+                                loadDetails();
+                        }
+                        else if ("{{assign_status}}" == "start_regrading") {
+                                loadDetails();
+                                assignRegraders();
+                                getRegradingPapers();
+                                stopRegrading();
+                                seeGrades();
+                        }
+                        else if ("{{assign_status}}" == "grading_ended") {
+                                loadDetails();
+                                calculateBonus();
+                                seeGrades();
+                        }
+                        else if ("{{assign_status}}" == "bonus_calculated") {
+                                loadDetails();
+                                seeGrades();
+
+                        }
+                }
+                if (res["privilege"] == "ta") {
+                        if ("{{assign_status}}" in ["set_outline","outline_set","published","subs_closed","method_selected","rubric_set"] ) {
+                                loadStuDetails();
+                                waitForGrading("probe grading")
+                        } 
+                        else if ("{{assign_status}}" == "grading_started")
+                        {
+                                probeGrading();
+                        }
+                        else if ("{{assign_status}}" == "start_regrading") {
+                                
+                                getRegradingPapers();
+                        }
+                        else if ("{{assign_status}}" == "grading_ended") {
+                                 seeGrades();
+                        }
                 }
         };
-        const dat = new FormData();
-        req.send(dat);
+        req.send();
 </script>
-{% endblock content %} {% comment %} {% block script %}
-<scrip type="text/javascript" src="{% static 'dashboard.js' %}"></scrip>
-{% endblock script %} {% endcomment %}
+{% endblock content %}

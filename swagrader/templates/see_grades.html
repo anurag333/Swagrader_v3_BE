@@ -1,0 +1,51 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Marks of students</h2>
+
+<div class="card" id="marks"></div>
+<br /><br />
+
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/get-marks");
+        req.onload = function () {
+                const data = JSON.parse(req.responseText);
+                console.log("data", data);
+
+                marks_div = document.getElementById("marks");
+
+                for (let stu in data) {
+                        ques_list = data[stu];
+                        let ul = document.createElement("ul");
+                        ul.classList.add("list-group");
+                        ul.classList.add("bg-light");
+                        ul.classList.add("p-5");
+                        let h2 = document.createElement("h2");
+                        h2.classList.add("text-success");
+                        h2.innerHTML = "Student : " + stu.toString();
+                        ul.appendChild(h2);
+                        marks_div.appendChild(ul);
+
+                        for (q in ques_list) {
+                                ques = ques_list[q];
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                li.innerHTML =
+                                        "Question " +
+                                        (parseInt(q) + 1).toString() +
+                                        " : " +
+                                        ques["title"].toString() +
+                                        "     ,Marks : " +
+                                        ques["marks"].toString() +
+                                        "     ,Bonus : " +
+                                        ques["bonus"].toString() +
+                                        "     ,Total Marks : " +
+                                        ques["total_marks"].toString();
+
+                                ul.appendChild(li);
+                        }
+                }
+        };
+        req.send();
+</script>
+{% endblock content %}

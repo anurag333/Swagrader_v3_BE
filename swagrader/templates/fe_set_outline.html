@@ -1,0 +1,227 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Set Outline</h2>
+</br></br>
+<div class="card card-body">
+                        <div id="alert"></div>
+                
+                        <div class="list-group border border-info bg-light p-5" >
+                                <div id="alert"></div>
+                                <h1 class="text-success p-3">Set Outline</h1>
+                                </br>
+                                
+                                </br></br>
+                                <form id="form1">
+                                        {% csrf_token %}  
+                                        <button type="button" class="btn btn-primary" style="width: 50%" id = "new_question">Add new Question</button>                                     
+                                        
+                                </form>
+                                
+                        </div>
+                        <button type="button" class="btn btn-primary m-3" id="btn">Submit</button>
+                </div>
+
+<div id = "form_hidden" style="opacity:0" >
+<form method="POST" action = "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/outline" style="opacity:0" enctype="multipart/form-data">
+    {% csrf_token %}
+    <fieldset class="form-group low-margin">
+        {{ form}}
+    </fieldset>
+    <div class="form-group low-margin">
+      <button class="btn btn-outline-info" type="submit" id = "push_button" >Submit</button>
+    </div>
+  </form>
+</div>
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+      
+
+        var ques = {};
+
+        var createSubQuestion = function(e){
+                let parent = e.target.parentNode;
+                let idx = parseInt(parent.id.substring(13))-1;
+
+                let div = document.createElement("div");
+                div.classList.add("form-group");
+                div.classList.add("p-3")
+                div.id = "div_sub_question-"+ (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+
+                let label = document.createElement("label");
+                label.for = "sub_question-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                label.innerHTML = "Sub Question " + ((ques[idx]["sub_questions"]).length+1).toString() + " name";
+                let input = document.createElement("input");
+                input.classList.add("form-control");
+                input.id =  "sub_question-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                input.type = "text" ;
+                input.name= "sub_question-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                input.placeholder =  "Sub Question " + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString() + " name";
+
+                let label1 = document.createElement("label");
+                label1.for = "sub_marks-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                label1.innerHTML = "Marks " + ((ques[idx]["sub_questions"]).length+1).toString() + " name";
+                let input1 = document.createElement("input");
+                input1.classList.add("form-control");
+                input1.id =  "sub_marks-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                input1.type = "text" ;
+                input1.name= "sub_marks-" + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString();
+                input1.placeholder =  "Marks " + (idx+1).toString() +"."+ ((ques[idx]["sub_questions"]).length+1).toString() + " name";
+
+                ques[idx]["sub_questions"].push({"gg":"1"});
+
+                div.appendChild(label)
+                div.appendChild(input)
+                div.appendChild(label1)
+                div.appendChild(input1)
+                parent.insertBefore(div,e.currentTarget);
+                console.log("but ques",ques)
+        }
+
+
+        document.getElementById("new_question").onclick = function (e) {
+                let div = document.createElement("div");
+                div.classList.add("form-group");
+                div.id = "div_question-" + (Object.keys(ques).length+1).toString();
+
+                let label = document.createElement("label");
+                label.for = "question-" + (Object.keys(ques).length+1).toString();
+                label.innerHTML = "Question " + (Object.keys(ques).length+1).toString() + " name";
+                let input = document.createElement("input");
+                input.classList.add("form-control");
+                input.id =  "question-" + (Object.keys(ques).length+1).toString();
+                input.type = "text" ;
+                input.name= "question-" + (Object.keys(ques).length+1).toString();
+                input.placeholder =  "Question " + (Object.keys(ques).length+1).toString() + " name";
+
+
+                let label1 = document.createElement("label");
+                label1.for = "marks-" + (Object.keys(ques).length+1).toString();
+                label1.innerHTML = "Marks " + (Object.keys(ques).length+1).toString() + " name";
+                let input1 = document.createElement("input");
+                input1.classList.add("form-control");
+                input1.id =  "marks-" + (Object.keys(ques).length+1).toString();
+                input1.type = "text" ;
+                input1.name= "marks-" + (Object.keys(ques).length+1).toString();
+                input1.placeholder =  "marks " + (Object.keys(ques).length+1).toString() + " name";
+
+                let label2 = document.createElement("label");
+                label2.for = "des_question-" + (Object.keys(ques).length+1).toString();
+                label2.innerHTML = "Description about marking";
+                let input2 = document.createElement("input");
+                input2.classList.add("form-control");
+                input2.id =  "des_question-" + (Object.keys(ques).length+1).toString();
+                input2.type = "text" ;
+                input2.name= "des_question-" + (Object.keys(ques).length+1).toString();
+                input2.placeholder =  "Question " + (Object.keys(ques).length+1).toString() + " name";
+
+
+
+                let button = document.createElement("button");
+                button.type = "button";
+                button.classList.add("btn");
+                button.classList.add("btn-primary");
+                button.classList.add("btn-sm");
+                button.classList.add("m-2");
+                button.classList.add("add_sub_question");
+                button.innerHTML = "Add SubQuestion"
+                button.onclick = createSubQuestion;
+
+                ques[(Object.keys(ques).length).toString()] = {"sub_questions":[]}
+
+                div.appendChild(label)
+                div.appendChild(input)
+                div.appendChild(label1)
+                div.appendChild(input1)
+                div.appendChild(label2)
+                div.appendChild(input2)
+                div.appendChild(button)
+                document.getElementById("form1").insertBefore(div,e.currentTarget);
+
+                console.log("but ques ", ques);
+        }
+
+
+        
+        
+
+
+        document.getElementById("btn").onclick = function () {
+                console.log("ques pre",ques);   
+                for(let i in ques){
+                        ques[i]["min_marks"] =0;
+                        ques[i]["sno"] = parseInt(i)+1;
+                        ques[i]["max_marks"] = document.getElementById("marks-"+(parseInt(i)+1).toString()).value;
+                        ques[i]["title"] = document.getElementById("question-"+(parseInt(i)+1).toString()).value;
+                        ques[i]["description"] = document.getElementById("des_question-"+(parseInt(i)+1).toString()).value;
+                        if(ques[i]["sub_questions"].length>0){
+                                for(let j in ques[i]["sub_questions"]){
+                                        console.log("aara",i,j)   
+                                        console.log("gg",ques[i]["sub_questions"][j])          
+                                        ques[i]["sub_questions"][j]["sno"] = parseInt(j)+1;
+                                        ques[i]["sub_questions"][j]["min_marks"] = 0;
+                                        ques[i]["sub_questions"][j]["max_marks"] = document.getElementById("sub_marks-"+(parseInt(i)+1).toString()+"."+(parseInt(j)+1).toString()).value;
+                                        ques[i]["sub_questions"][j]["title"] = document.getElementById("sub_question-"+(parseInt(i)+1).toString()+"."+(parseInt(j)+1).toString()).value;
+                                }
+                        }
+                }
+                console.log("ques",ques);
+                
+                for(i in ques){
+                        console.log("iline",ques[i]);
+                        for(j in ques[i]["sub_questions"]){
+                                console.log("jline",ques[i]["sub_questions"][j]);
+                        }
+                }
+
+                console.log("csrfmiddlewaretoken",csrftoken);
+
+
+                let data = {};
+                data["questions"] = [];
+
+                for(let i in ques){
+                        let cur_ques = ques[i]
+                        let psh = {}
+                        psh["title"] = cur_ques.title
+                        psh["description"] = cur_ques.description
+                        psh["min_marks"] = cur_ques.min_marks
+                        psh["max_marks"] = cur_ques.max_marks
+                        psh["sno"] =cur_ques.sno
+                        psh["sub_questions"] =[]
+
+                        for(let j in cur_ques["sub_questions"]){
+                                let cur_sques = cur_ques["sub_questions"][j]
+                                let spsh = {}
+                                spsh["sno"] = cur_sques.sno
+                                spsh["title"] = cur_sques.title
+                                spsh["min_marks"] = cur_sques.min_marks
+                                spsh["max_marks"] = cur_sques.max_marks
+                                psh["sub_questions"].push(spsh)
+                        }
+                        data["questions"].push(psh)
+                }
+                
+                console.log("mydata",data)
+                
+                console.log("main",data)
+
+                data = JSON.stringify(data);
+
+                console.log("data",data);
+                document.getElementById("id_question_feild").value = data;
+                document.getElementById("push_button").click();
+                
+        };
+</script>
+{% endblock content %} 

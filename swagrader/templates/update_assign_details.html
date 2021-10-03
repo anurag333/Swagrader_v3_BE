@@ -1,0 +1,123 @@
+
+
+        {% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Update Assignment Details</h2>
+</br></br>
+
+<div class="border border-info p-3" id ="assign_details_meta">
+        
+        <div id = "for_form">
+                <div class="card card-body">
+                
+                        <div class="list-group border border-info bg-light p-5" >
+                                <div id="alert"></div>
+                                <h1 class="text-success p-3">Update Assignment Meta Details</h1>
+
+                                <form id="form1" enctype="multipart/form-data" method="post" action="/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/meta">
+                                        {% csrf_token %}
+                                        <div class="form-group">
+                                                <label for="alpha">Alpha</label>
+                                                <input type="number" id="i_alpha" name="alpha" step ="0.1" class="form-control" placeholder="" />
+                                        </div>
+                                        <div class="form-group">
+                                                <label for="mu">Mu</label>
+                                                <input type="number" id = "i_mu" name="mu"step=".001" class="form-control"  />
+                                        </div>
+                                        <div class="form-group">
+                                                <label for="gm">Gamma</label>
+                                                <input type="number" id = "i_gm" name="gm"step=".001" class="form-control"  />
+                                        </div>
+                                        <div class="form-group">
+                                                <label for="peerdist">No. of copies a single peergrader gets</label>
+                                                <input type="number" id = "i_peerdist" name="peerdist" class="form-control"  />
+                                        </div>
+                                        <div class="form-group">
+                                                <label for="n_probes" id = "edit">No. of probes :   ( k/2 < no. Probes <= n/(k/2+1) )</label>
+                                                <input type="number" id = "i_n_probes" name="n_probes" step = "1" class="form-control"  />
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                                <label for="probing_deadline">Probe checking Deadline:</label>
+                                                <input type="datetime-local" id="probing_deadline" name="probing_deadline" class="form-control" required />
+                                        </div>
+                                        <div class="form-group">
+                                                <label for="peergrading_deadline">Peer Papers Checking Deadline:</label>
+                                                <input type="datetime-local" id="peergrading_deadline" name="peergrading_deadline" class="form-control" required />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary" id="btn">Submit</button>
+                                </form>
+                        </div>
+                </div>
+        
+
+        </div>
+
+</div>
+
+<script type="text/javascript">
+
+
+        
+
+        {% comment %} document.getElementById("alert").innerHTML = "please select no. of copies a peergrader gets first, then see if there is some valid value for no. of probe paper to be assigned"
+        document.getElementById("alert").classList.add("alert-danger")
+        document.getElementById("alert").classList.add("p-3") {% endcomment %}
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/meta", true);
+        xhr.onload = () => {
+                const data = JSON.parse(xhr.responseText);
+                console.log("statusText", xhr.statusText);
+                console.log("messgae loading");
+                console.log(data);      
+
+                document.getElementById("i_alpha").value =  data["alpha"]
+                document.getElementById("i_mu").value =  data["mu"]
+                document.getElementById("i_gm").value =  data["gm"]
+                document.getElementById("i_n_probes").value =  data["n_probes"]
+                document.getElementById("i_peerdist").value = data["peerdist"]
+                document.getElementById("probing_deadline").value =  data["probing_deadline"].substring(0,data["peergrading_deadline"].length-4)
+                document.getElementById("peergrading_deadline").value =  data["peergrading_deadline"].substring(0,data["peergrading_deadline"].length-4)
+
+                var req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/num-peers", true);
+                req.onload = () => {
+
+
+                        document.getElementById("i_peerdist").onKeyDown = function(){
+                                let val = document.getElementById("i_peerdist").value
+                                let lb = parseInt(data["peerdist"])/2 +1;
+                                let ub = parseInt(data1["num_peers"])/(parseInt(data["peerdist"])/parseInt(2) +parseInt(1))
+                                if(lb>ub){
+                                        document.getElementById("edit").innerHTML = "no valid value for this field";                              
+                                }
+                                else
+                                        document.getElementById("edit").innerHTML = "No. of probes, value in range ["+ lb.toString() +","+ Math.floor(ub).toString()+"] n = "+ data1["num_peers"];
+                        }
+
+
+                        const data1 = JSON.parse(req.responseText);
+                        console.log("statusText", req.statusText);
+                        console.log("normal details",data1)
+                        document.getElementById("i_n_probes").min = 2;
+                        let ub = parseInt(data1["num_peers"])/(parseInt(data["peerdist"])/parseInt(2) +parseInt(1))
+                        document.getElementById("i_n_probes").max = ub
+                        document.getElementById("i_n_probes").step = 1
+                        document.getElementById("i_n_probes").min = lb
+                        document.getElementById("i_n_probes").max = ub
+                        let lb = parseInt(data["peerdist"])/2 +1;
+                        if(lb>ub){
+                        document.getElementById("edit").innerHTML = "no valid value for this field";                              
+                        }
+                        else
+                        document.getElementById("edit").innerHTML = "No. of probes, value in range ["+ lb.toString() +","+ Math.floor(ub).toString()+"] n = "+ data1["num_peers"];
+                        
+                }
+                req.send();
+                
+        };
+        xhr.send();
+
+</script>
+{% endblock content %} 

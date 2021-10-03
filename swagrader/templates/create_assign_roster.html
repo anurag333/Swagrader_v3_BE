@@ -1,0 +1,197 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Create Roster.</h2>
+
+<button type="button" class="btn btn-primary" id="back">Go Back to Assignment Details</button><br /><br>
+
+<div class="border border-info p-3">
+<h2 class="text-success p-3">Teaching Assistant</h2>
+<ul class="list-group bg-light p-5" id="l_ta"></ul>
+</div>
+</br>
+<div class="border border-info p-3">
+<h2 class="text-success p-3">Students</h2>
+<ul class="list-group bg-light p-5" id="l_students"></ul>
+</div>
+</br>
+<div class="border border-info p-3">
+<h2 class="text-success p-3">Instructor Graders</h2>
+<ul class="list-group bg-light p-5" id="l_instructors"></ul>
+</div>
+</br>
+
+
+<button type="button" class="btn btn-primary" id="reset">Reset</button>
+
+
+
+<div id = "form_hidden" style="opacity:0" >
+<form method="POST" action = "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/assign-roster" enctype="multipart/form-data">
+    {% csrf_token %}
+    <fieldset class="form-group low-margin">
+        {{ form}}
+    </fieldset>
+    <div class="form-group low-margin">
+      <button class="btn btn-outline-info" type="submit" id = "push_button" >Submit</button>
+    </div>
+  </form>
+</div>
+
+
+
+
+<script type="text/javascript">
+
+    var goBack = function(){
+        let url = window.location.href.substring(0,window.location.href.length-14)
+        console.log(url)
+        window  .open(url,"_self");
+    }
+    document.getElementById("back").onclick = goBack;
+
+    var resetRoster = function(){
+        let data = {};
+            data["email"] = "";
+            data["action"] = "reset";
+            data = JSON.stringify(data);
+            document.getElementById("id_question_feild").value = data;
+            document.getElementById("push_button").click();
+    }
+
+    document.getElementById("reset").onclick = resetRoster;
+    
+    var make_change = function(e){
+        let parent_li = e.target.parentNode.parentNode;
+        let grand_parent = parent_li.parentNode;
+        email = parent_li.id;
+        action = this.id.substring(email.length);
+        console.log(action)
+        if(action == "b_student"){
+            let data = {};
+            data["email"] = email;
+            data["action"] = "student";
+            data = JSON.stringify(data);
+            document.getElementById("id_question_feild").value = data;
+            document.getElementById("push_button").click();
+        }
+        if(action == "b_ta"){
+            let data = {};
+            data["email"] = email;
+            data["action"] = "ta";
+            data = JSON.stringify(data);
+            document.getElementById("id_question_feild").value = data;
+            document.getElementById("push_button").click();
+        }
+        if(action == "b_instructor"){
+            let data = {};
+            data["email"] = email;
+            data["action"] = "remove";
+            data = JSON.stringify(data);
+            document.getElementById("id_question_feild").value = data;
+            document.getElementById("push_button").click();
+        }
+    }
+
+    var get_div = function(email,role){
+        let div_out = document.createElement("div");
+        div_out.classList.add("row");
+        let but1 = document.createElement("button");
+        let but2 = document.createElement("button");
+        let but3 = document.createElement("button");
+        but1.classList.add("col-sm");
+        but2.classList.add("col-sm");
+        but3.classList.add("col-sm");
+        but1.classList.add("but");
+        but2.classList.add("but");
+        but3.classList.add("but");
+        but1.classList.add("btn");
+        but2.classList.add("btn");
+        but3.classList.add("btn");
+        but1.classList.add("btn-primary");
+        but2.classList.add("btn-primary");
+        but3.classList.add("btn-primary");
+        but1.classList.add("btn-sm");
+        but2.classList.add("btn-sm");
+        but3.classList.add("btn-sm");
+        but1.classList.add("m-1");
+        but2.classList.add("m-1");
+        but3.classList.add("m-1");
+        but1.id = email.toString()+"b_student"
+        but2.id = email.toString()+"b_ta"
+        but3.id = email.toString()+"b_instructor"
+        but1.innerHTML = "Make Student";
+        but2.innerHTML = "Make Teaching Assistant";
+        but3.innerHTML = "Remove from Assignment roster";
+        but1.onclick = make_change
+        but2.onclick = make_change  
+        but3.onclick = make_change
+        {% comment %} if(role != "student")
+            div_out.appendChild(but1);
+        if(role != "ta")
+            div_out.appendChild(but2);
+        if(role != "instructor") {% endcomment %}
+            div_out.appendChild(but3);
+        return div_out;
+        
+    }
+
+
+
+
+
+    var loadDetails = function(){
+                const req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/assign-roster");
+                req.onload = () =>{
+                        const data = JSON.parse(req.responseText);
+                        console.log("details",data);
+                        for (email of data["ta"]){
+                            let li = document.createElement("li");
+                            li.classList.add("list-group-item");
+                            
+                            let div = get_div(email,"ta");
+                            let p = document.createElement("p");
+                            p.classList.add("text-info");
+                            p.innerHTML = email;
+                            li.appendChild(p);
+                            li.appendChild(div);
+                            li.id = email;
+                                                 
+                            document.querySelector("#l_ta").appendChild(li);
+                        }
+                        for (email of data["students"]){
+                            let li = document.createElement("li");
+                            li.classList.add("list-group-item");
+                            
+                            let div = get_div(email,"student");
+                            let p = document.createElement("p");
+                            p.classList.add("text-info");
+                            p.innerHTML = email;
+                            li.appendChild(p);
+                            li.appendChild(div);
+                            li.id = email;
+                                                 
+                            document.querySelector("#l_students").appendChild(li);
+                        }
+                        for (email of data["instructors"]){
+                            let li = document.createElement("li");
+                            li.classList.add("list-group-item");
+                            
+                            let div = get_div(email,"instructor");
+                            let p = document.createElement("p");
+                            p.classList.add("text-info");
+                            p.innerHTML = email;
+                            li.appendChild(p);
+                            li.appendChild(div);
+                            li.id = email;
+                                                 
+                            document.querySelector("#l_instructors").appendChild(li);
+                        }
+                }
+                req.send();
+        }
+        
+        loadDetails();
+</script>
+
+{% endblock content %}

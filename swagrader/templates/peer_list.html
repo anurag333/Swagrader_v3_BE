@@ -1,0 +1,50 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>List of Probe Papers to Check</h2>
+
+<div class="card card-body text-danger" id="main_div">
+        <ul class="list-group bg-light p-5" id="peers"></ul>
+</div>
+
+<script type="text/javascript">
+        var peersToCheck = function () {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
+                request.onload = () => {
+                        console.log("instructor one");
+                        const data = JSON.parse(request.responseText);
+                        console.log("probes");
+                        console.log(data);
+                        if ("message" in data) {
+                                return;
+                        }
+                        if (data.length == 0) {
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                li.innerHTML = "You haven't got any probe papers to Check";
+                                document.querySelector("#probes").appendChild(li);
+                        }
+                        for (paper in data) {
+                                console.log(paper);
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                let link = "";
+                                link += "grade-peer";
+                                let st = data[paper].lastIndexOf(":") + 1;
+                                let end = data[paper].lastIndexOf("}");
+                                str = data[paper].substring(st, end);
+                                link += "/" + str;
+                                console.log(link);
+                                let a_link = document.createElement("a");
+                                a_link.href = link;
+                                a_link.classList.add("list-group-item-action");
+                                a_link.innerHTML = "grade peer paper : " + (parseInt(paper) + 1).toString();
+                                li.appendChild(a_link);
+                                document.querySelector("#peers").appendChild(li);
+                        }
+                };
+                request.send();
+        };
+        peersToCheck();
+</script>
+{% endblock content %}

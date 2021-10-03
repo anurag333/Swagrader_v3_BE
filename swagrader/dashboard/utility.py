@@ -7,54 +7,60 @@ from django.contrib.auth import get_user_model
 import numpy as np
 
 
-
-
 def get_probes(outline_with_rubrics, assign, strategy='random'):
     subs = assign.assign_submissions.all()
     User = get_user_model()
-    if strategy == 'random':
-        sub_ids = set()
-        for sub in subs:
-            sub_ids.add(sub.sub_id)
-        print(assign.assignment_peergrading_profile.all()[0].n_probes)
-        print(assign.assignment_peergrading_profile.all()[0].peerdist)
-        probes = []
-        user_ids = set()
+
+    sub_ids = set()
+    for sub in subs:
+        sub_ids.add(sub.sub_id)
+    print(assign.assignment_peergrading_profile.all()[0].n_probes)
+    print(assign.assignment_peergrading_profile.all()[0].peerdist)
+    probes = []
+    user_ids = []
+    if strategy == 'cyclic':
         for user in chain(assign.assignment_peergrading_profile.all()[0].instructor_graders.all(), assign.assignment_peergrading_profile.all()[0].ta_graders.all()):
-            user_ids.add(user.email)
-        for _ in range(assign.assignment_peergrading_profile.all()[0].n_probes):
-            id = random.choice(tuple(sub_ids))
-            # right now we are choosing random id to give probe and not removing from set
-            user_id = random.choice(tuple(user_ids))
-            sub = get_object_or_404(assign.assign_submissions.all(), sub_id=id)
-            grader = get_object_or_404(User, email=user_id)
-            print(sub)
-            print(grader)
-            try:
-                probe = ProbeSubmission.objects.create(
-                    parent_sub=sub, probe_grader=grader)
-            except:
-                print(
-                    '########################### probeSubmission object already exists#################################################')
-                raise Http404
-            sub_ids.remove(id)
+            user_ids.append(user.email)
+    if strategy == "select-ta":
+        for user in assign.assignment_peergrading_profile.all()[0].ta_for_probes.all():
+            user_ids.append(user.email)
+    for idx in range(assign.assignment_peergrading_profile.all()[0].n_probes):
+        id1 = random.choice(tuple(sub_ids))
+        # right now we are choosing random id to give probe and not removing from set
+        user_id = user_ids[idx % len(user_ids)]
+        sub = get_object_or_404(
+            assign.assign_submissions.all(), sub_id=id1)
+        sub_ids.remove(id1)
+        grader = get_object_or_404(User, email=user_id)
+        print(sub)
+        print(grader)
+        try:
+            probe = ProbeSubmission.objects.create(
+                parent_sub=sub, probe_grader=grader)
             probes.append({'probe_id': probe.probe_id})
-            for q in outline_with_rubrics:
-                cur_ques = Question.objects.get(ques_id=q['qid'])
-                ques_sub = sub.submissions.all().get(question=cur_ques)
-                ques = ProbeSubmissionQuestion.objects.create(
-                    parent_probe_sub=probe, parent_ques=ques_sub)
-                ques_com = ProbeSubmissionQuestionComment.objects.create(
-                    parent_ques=ques)
+            print("probe id created", probe.probe_id)
 
-                for sq in q['sub_questions']:
-                    sub_ques = SubQuestion.objects.get(sques_id=sq['sqid'])
-                    sub_ques = ProbeSubmissionSubquestion.objects.create(
-                        parent_probe_ques=ques, parent_sub_ques=sub_ques)
-                    sub_ques_com = ProbeSubmissionSubquestionComment.objects.create(
-                        parent_subques=sub_ques)
+        except:
+            print(
+                '########################### probeSubmission object already exists#################################################')
+            raise Http404
+        print("should be same probe id ", probe.probe_id)
+        for q in outline_with_rubrics:
+            cur_ques = Question.objects.get(ques_id=q['qid'])
+            ques_sub = sub.submissions.all().get(question=cur_ques)
+            ques = ProbeSubmissionQuestion.objects.create(
+                parent_probe_sub=probe, parent_ques=ques_sub)
+            ques_com = ProbeSubmissionQuestionComment.objects.create(
+                parent_ques=ques)
 
-        return probes
+            for sq in q['sub_questions']:
+                sub_ques = SubQuestion.objects.get(sques_id=sq['sqid'])
+                sub_ques = ProbeSubmissionSubquestion.objects.create(
+                    parent_probe_ques=ques, parent_sub_ques=sub_ques)
+                sub_ques_com = ProbeSubmissionSubquestionComment.objects.create(
+                    parent_subques=sub_ques)
+
+    return probes
 
 
 def get_outline_with_rubrics(assign):

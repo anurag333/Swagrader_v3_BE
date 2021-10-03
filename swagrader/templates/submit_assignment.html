@@ -1,0 +1,139 @@
+
+
+        {% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Submit Assignment</h2>
+</br></br>
+
+{% comment %} 
+<div id = "for_form">
+                
+        <div class="list-group border border-info bg-light p-5" >
+                <div id="alert"></div>
+                <h1 class="text-success p-3">Submit pdf's for each question</h1>
+
+                <form id="form1" enctype="multipart/form-data"  method="POST" action = "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit">
+                        {% csrf_token %}
+
+                        
+                        
+                        
+                </form>
+                
+        </div>
+</div>
+   {% endcomment %}
+
+<div id = "form_hidden" style="opacity:100" class = "border border-primary" >
+<form method="POST" action = "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit" enctype="multipart/form-data" class ="card">
+    {% csrf_token %}
+    <fieldset class="form-group low-margin">
+        {{form|crispy}}
+    </fieldset>
+    <div class="form-group low-margin">
+      <button class="btn btn-outline-info" type="submit" id = "push_button" >Submit</button>
+    </div>
+  </form>
+</div>
+
+
+<script type="text/javascript">
+
+        const labelreq = new XMLHttpRequest();
+        labelreq.open('GET',"/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit",true);
+        labelreq.onload = function(){
+                const data = JSON.parse(labelreq.responseText)
+                console.log("data",data);
+
+                for(q in data["questions"]){
+                        ques = data["questions"][q]
+                        let id = "id_" + ques["ques_id"].toString();
+                        console.log("id",id)
+                        let parent = document.getElementById(id).parentNode.parentNode;
+                        parent.classList.add("card")
+                        parent.classList.add("p-3")
+
+                        if(ques["pdf"]!="None"){
+                                let idx = ques["pdf"].lastIndexOf("/")+1;
+                                let strr = ques["pdf"].substring(idx);
+                                console.log("strr",strr);
+                                let p = document.createElement("p");
+                                p.classList.add("text-info")
+                                p.innerHTML = strr;
+                                parent.appendChild(p)
+                        }
+
+                        console.log("pare id ",parent.id)
+                        let childLable = parent.children[0]
+                        console.log("childLable",childLable)
+                        childLable.innerHTML = "Question "+(parseInt(q)+1).toString()+" : ";
+                }
+        }
+        labelreq.send();
+
+       
+
+        {% comment %} var sendSubmission = function(){
+                const request = new XMLHttpRequest();
+                request.open('POST',"/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit",true);
+                request.onload = function(){
+                        const data = JSON.parse(request.responseText)
+                        console.log("data",data);
+                        new_data = {}
+                        for(q in data["questions"]){
+                                ques = data["questions"][q]
+                                new_data[ques["ques_id"].toString()] = document.getElementById(ques["ques_id"].toString()).value
+                        }
+                        new_data = JSON.stringify(new_data)
+
+                        document.getElementById("id_question_feild").value = new_data
+                        document.getElementById("push_button").click()
+
+                }
+                request.send();
+        } {% endcomment %}
+{% comment %} 
+        const request = new XMLHttpRequest();
+        request.open('GET',"/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/submit",true);
+        request.onload = function(){
+                const data = JSON.parse(request.responseText)
+                console.log("data",data);
+                form = document.getElementById("form1");
+                for(q in data["questions"]){
+                        ques = data["questions"][q];
+                        console.log("ques",ques)
+                        let div = document.createElement("div");
+                        div.classList.add("form-group");
+                        
+                        let label = document.createElement("label");
+                        label.for = ques["ques_id"]
+                        label.innerHTML = "Question " + q.toString() + " : ";
+
+                        let input = document.createElement("input");
+                        input.type = "file" 
+                        input.name = ques["ques_id"]
+                        input.accept = "application/pdf" 
+                        input.classList.add("form-control")
+                        input.id = ques["ques_id"]
+                        if(ques['pdf']){
+                                input.placeholder = ques["pdf"].toString
+                        }
+
+                        div.appendChild(label);
+                        div.appendChild(input);
+
+                        form.appendChild(div);
+                } 
+                let button = document.createElement("button");
+                button.type = "submit" 
+                button.classList.add("btn")
+                button.classList.add("btn-primary")
+                button.innerHTML = "Submit"
+                
+                
+                form.appendChild(button);
+
+        }
+        request.send(); {% endcomment %}
+</script>
+{% endblock content %} 

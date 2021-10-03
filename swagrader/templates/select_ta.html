@@ -1,0 +1,86 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Select Ta's for probe Grading</h2>
+
+<div id="ta_list"></div>
+<button class="btn btn-outline-info" type="button" id="submit">Submit</button>
+
+<div id="form_hidden" style="opacity: 0">
+        <form method="POST" action="/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/select-ta" style="opacity: 0" enctype="multipart/form-data">
+                {% csrf_token %}
+                <fieldset class="form-group low-margin">{{ form}}</fieldset>
+                <div class="form-group low-margin">
+                        <button class="btn btn-outline-info" type="submit" id="push_button">Submit</button>
+                </div>
+        </form>
+</div>
+
+<script type="text/javascript">
+        var removed = [];
+        var make_change = function (e) {
+                cur = e.target.parentNode.parentNode;
+                removed.push(cur.children[0].innerHTML);
+                console.log(cur.children[0].innerHTML);
+                cur.remove();
+        };
+
+        var get_div = function (email, role) {
+                let div_out = document.createElement("div");
+                div_out.classList.add("row");
+                let but1 = document.createElement("button");
+                let but2 = document.createElement("button");
+                let but3 = document.createElement("button");
+                but1.classList.add("col-sm");
+                but1.classList.add("but");
+                but1.classList.add("btn");
+                but1.classList.add("btn-primary");
+                but1.classList.add("btn-sm");
+                but1.classList.add("m-1");
+                but1.id = email.toString() + "b_student";
+                but1.innerHTML = "Remove from Probe checking";
+                but1.onclick = make_change;
+                div_out.appendChild(but1);
+                return div_out;
+        };
+
+        var loadDetails = function () {
+                const req = new XMLHttpRequest();
+                req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/select-ta");
+                req.onload = () => {
+                        const data = JSON.parse(req.responseText);
+                        console.log("details", data);
+                        for (let email of data) {
+                                let li = document.createElement("li");
+                                li.classList.add("list-group-item");
+
+                                let div = get_div(email, "ta");
+                                let p = document.createElement("p");
+                                p.classList.add("text-info");
+                                p.innerHTML = email;
+                                li.appendChild(p);
+                                li.appendChild(div);
+                                li.id = email;
+
+                                document.querySelector("#ta_list").appendChild(li);
+                        }
+                        var sendData = function () {
+                                let temp = data;
+                                for (let ta of removed) {
+                                        idx = temp.indexOf(ta);
+                                        if (idx > -1) {
+                                                temp.splice(idx, 1);
+                                        }
+                                }
+                                temp = JSON.stringify(temp);
+                                document.getElementById("id_question_feild").value = temp;
+                                document.getElementById("push_button").click();
+                        };
+                        document.getElementById("submit").onclick = sendData;
+                };
+                req.send();
+        };
+
+        loadDetails();
+</script>
+
+{% endblock content %}

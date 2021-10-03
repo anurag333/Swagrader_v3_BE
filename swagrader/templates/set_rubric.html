@@ -1,0 +1,272 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Set Rubrics</h2>
+</br></br>
+<button id = "undo" class = "btn btn-secondary" style = "opacity:0">Undo</button>
+<div id = "put_rubrics"></div>
+<button id = "submit_rubrics" class = "btn btn-primary m-5">Submit</button>
+
+
+
+<div id = "form_hidden" style="opacity:0" >
+<form method="POST" action = "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/create-rubric" enctype="multipart/form-data">
+    {% csrf_token %}
+    <fieldset class="form-group low-margin">
+        {{ form}}
+    </fieldset>
+    <div class="form-group low-margin">
+      <button class="btn btn-outline-info" type="submit" id = "push_button" >Submit</button>
+    </div>
+  </form>
+</div>
+
+
+
+<script type="text/javascript">
+
+        var ques_del =[]
+        var subques_del = []
+        var undo = []
+        var undoDelete = function(){
+                if (undo.length==0)return;
+                let x = undo.pop();
+                const index = ques_del.indexOf((x["node"].id).toString());
+                if (index > -1) {
+                        ques_del.splice(index, 1);
+                }
+                const index1 = subques_del.indexOf((x["node"].id).toString().substring(4));
+                if (index1 > -1) {
+                        subques_del.splice(index1, 1);
+                }
+                x["parent"].appendChild(x["node"]);
+                console.log("quesdel",ques_del)
+                console.log("subques_del",subques_del)
+        }
+        var q_delete = function(e){
+                let parent = e.target.parentNode;
+                ques_del.push(parent.id);
+                let temp = {}
+                temp["node"] = document.getElementById(parent.id)
+                temp["parent"] = parent.parentNode;
+                undo.push(temp);
+                parent.remove();
+                console.log("ques_del",subques_del);
+                document.getElementById("undo").style.opacity ="100";
+                console.log("undo",undo)
+        }
+        var sq_delete = function(e){
+                let parent = e.target.parentNode;
+                console.log("paretn",parent)
+                rub_id = parent.id.substring(4);
+                subques_del.push(rub_id);
+                let temp = {}
+                temp["node"] = document.getElementById(parent.id)
+                temp["parent"] = parent.parentNode;
+                undo.push(temp);
+                parent.remove();
+                console.log("subques_del",subques_del);
+                document.getElementById("undo").style.opacity ="100";
+                console.log("undo",undo)
+        }
+
+        var submitRubrics = function(){
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/create-rubric");
+                request.onload = () =>{
+                        const data = JSON.parse(request.responseText);
+                        console.log("messgae loading");
+                        console.log(data);
+                        let send_data = data;
+                        for(q in data){
+                                let ques = data[q];
+                                if(ques["sub_questions"].length>0){
+                                        for(sq in  ques["sub_questions"]){
+                                                let sques = ques["sub_questions"][sq];
+                                                for(r in sques["sub_rubrics"]){
+                                                        rubric = sques["sub_rubrics"][r]
+                                                        const index = subques_del.indexOf(rubric.sub_rubric_id.toString());
+                                                        console.log("index",index,rubric.sub_rubric_id)
+                                                        if(index > -1){
+                                                                send_data[q]["sub_questions"][sq]["sub_rubrics"].splice(r,1);
+                                                                console.log("subdeleteing",send_data[q]["sub_questions"][sq]["sub_rubrics"][r])
+                                                        }
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(r in ques["rubrics"]){
+                                                rubric = ques["rubrics"][r]
+                                                const index = ques_del.indexOf(rubric.rubric_id.toString());
+                                                console.log("index",index,rubric.rubric_id)
+                                                if(index > -1){
+                                                        send_data[q]["rubrics"].splice(r,1);
+                                                        console.log("deleting",send_data[q]["rubrics"][r])
+                                                }
+                                        }
+                                }
+                        }
+                        console.log("data",data)
+
+                        for(let ques of send_data){
+                                if(ques["sub_questions"].length > 0){
+                                        for(let sques of ques["sub_questions"]){
+                                                for(rubric of sques["sub_rubrics"]){
+                                                        console.log("dfd",rubric["sub_rubric_id"])
+                                                        rubric.description = document.getElementById("ib_"+(rubric["sub_rubric_id"]).toString()).value;
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(rubric of ques["rubrics"]){
+                                                rubric.description = document.getElementById("i_"+(rubric["rubric_id"]).toString()).value;
+                                        }
+                                }
+                        }
+
+                        console.log("senddata",send_data)
+
+                        send_data = JSON.stringify(send_data)
+
+                        document.getElementById("id_question_feild").value = send_data;
+                        document.getElementById("push_button").click();
+                        
+                }
+                request.send();
+        }
+
+
+
+        document.getElementById("undo").onclick = undoDelete;
+        document.getElementById("submit_rubrics").onclick = submitRubrics;
+
+
+
+        const request = new XMLHttpRequest();
+        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/create-rubric");
+        request.onload = () => {
+                const data = JSON.parse(request.responseText);
+                console.log("messgae loading");
+                console.log(data);
+                let div_out = document.createElement("div");
+                document.getElementById("put_rubrics").appendChild(div_out);
+                {% comment %} div_out.classList.add("card"); {% endcomment %}
+                var cnt = 0;
+                for(ques of data){
+                        let div = document.createElement("div");
+                        {% comment %} div.classList.add("row"); {% endcomment %}
+                        let h = document.createElement("h4");
+                        h.classList.add("text-info");
+                        h.innerHTML = "Question " + (cnt+1).toString();
+                        cnt++;
+                        div.appendChild(h);
+
+                        div_out.appendChild(div);
+                        if(ques["sub_questions"].length>0){
+                                let divsub = document.createElement("div");
+                                {% comment %} divsub.classList.add("row"); {% endcomment %}
+                                div.appendChild(divsub);
+                                var scnt = 0;
+                                for(sques of ques["sub_questions"]){
+                                        var divtemp = document.createElement("div");    
+                                        {% comment %} divtemp.classList.add("row"); {% endcomment %}
+                                        let h1 = document.createElement("h6");
+                                        h1.classList.add("text-info");
+                                        h1.innerHTML = "SubQuestion " + cnt.toString() +"."+(scnt+1).toString();
+                                        scnt++;
+                                        divtemp.appendChild(h1);        
+                                        divsub.appendChild(divtemp);
+                                        for(rubric of sques["sub_rubrics"]){
+                                                let div1 = document.createElement("div");
+                                                div1.classList.add("row");
+                                                div1.classList.add("col")
+                                                div1.classList.add("card-body");
+                                                div1.id = "sub_" + (rubric.sub_rubric_id).toString();
+                                                
+                                                let p = document.createElement("h5");
+                                                p.classList.add("col-2");
+                                                p.classList.add("text-warning");
+                                                p.innerHTML = "Marks : " + (rubric.marks).toString();
+                                                
+                                                let inp = document.createElement("input");
+                                                inp.type = "text";
+                                                inp.classList.add("col");
+                                                inp.placeholder =  "rubric description"
+                                                inp.id = "ib_" + (rubric.sub_rubric_id).toString()
+                                                inp.innerHTML = rubric.description
+
+
+                                                let button = document.createElement("button");
+                                                button.classList.add("btn")
+                                                button.classList.add("btn-danger")
+                                                button.classList.add("btn-sm")
+                                                button.classList.add("rounded-0")
+                                                button.classList.add("col-2")
+                                                button.type = "button"
+                                                button.setAttribute('data-toggle', 'tooltip');
+                                                button.setAttribute('data-placement', 'top');
+                                                button.title = "Delete"
+                                                button.classList.add("delete_sub_rubric")
+                                                button.id = "bs_" + (rubric.sub_rubric_id).toString()
+                                                button.innerHTML = "Delete rubric"
+                                                button.onclick = sq_delete
+                                                
+
+                                                div1.appendChild(p)
+                                                div1.appendChild(inp)
+                                                div1.appendChild(button)
+
+                                                divtemp.appendChild(div1)
+                                        }
+                                }
+                        }
+                        else{
+                                for(rubric of ques["rubrics"]){
+                                                let div1 = document.createElement("div");
+                                                div1.classList.add("row");
+                                                div1.classList.add("col")
+                                                div1.classList.add("card-body");
+                                                div1.id = (rubric.rubric_id).toString();
+                                                
+                                                let p = document.createElement("h5");
+                                                p.classList.add("col-2");
+                                                p.classList.add("text-warning");
+                                                p.innerHTML = "Marks : " + (rubric.marks).toString();
+                                                
+                                                let inp = document.createElement("input");
+                                                inp.type = "text";
+                                                inp.classList.add("col");
+                                                inp.placeholder =  "rubric description"
+                                                inp.id = "i_" + (rubric.rubric_id).toString()
+                                                inp.innerHTML = rubric.description
+
+
+                                                let button = document.createElement("button");
+                                                button.classList.add("btn")
+                                                button.classList.add("btn-danger")
+                                                button.classList.add("btn-sm")
+                                                button.classList.add("rounded-0")
+                                                button.classList.add("col-2")
+                                                button.type = "button"
+                                                button.setAttribute('data-toggle', 'tooltip');
+                                                button.setAttribute('data-placement', 'top');
+                                                button.title = "Delete"
+                                                button.classList.add("delete_rubric")
+                                                button.id = "b_" + (rubric.rubric_id).toString()
+                                                button.innerHTML = "Delete rubric"
+                                                button.onclick = q_delete
+                                                
+
+                                                div1.appendChild(p)
+                                                div1.appendChild(inp)
+                                                div1.appendChild(button)
+
+                                                div.appendChild(div1)
+
+                                        }
+                        }
+                }
+        };
+        
+        request.send();
+</script>
+{% endblock content %} 

@@ -75,8 +75,8 @@ def trupeqa(mat, mu, gm, n_probes, probe_score, alpha):
     bi = get_bias(mat, probe_idx, probe_score)
     ti = get_reliability(mat, probe_idx, probe_score)
 
-    print('bi => ', bi)
-    print('ti => ', ti)
+    # print('bi => ', bi)
+    # print('ti => ', ti)
 
     r_star = []
     for i in range(len(mat[0])):
@@ -112,7 +112,7 @@ def calculate_bonus(mat, mu, gm, n_probes, probe_score, yj, alpha):
         # arr = np.ravel(mat[:, i:i+1])
         w_star_j.append(R(r_star[i], yj[i]))
 
-    print('w_star_j => ', w_star_j)
+    # print('w_star_j => ', w_star_j)
 
     w_star_j_minus_i = []
 
@@ -125,9 +125,9 @@ def calculate_bonus(mat, mu, gm, n_probes, probe_score, yj, alpha):
             wji.append(R(rs, yj[j]))
         w_star_j_minus_i.append(wji)
 
-    print('w_star_j_minus_i => ')
-    for i in (w_star_j_minus_i):
-        print(i)
+    # print('w_star_j_minus_i => ')
+    # for i in (w_star_j_minus_i):
+    #     print(i)
 
     bonus = []
 
@@ -137,13 +137,13 @@ def calculate_bonus(mat, mu, gm, n_probes, probe_score, yj, alpha):
             if j in probe_idx:
                 continue
             bon += alpha * (w_star_j[j]-w_star_j_minus_i[i][j])
-            print(alpha * (w_star_j[j]-w_star_j_minus_i[i][j]), end=" ")
+            # print(alpha * (w_star_j[j]-w_star_j_minus_i[i][j]), end=" ")
         bonus.append(bon)
-        print()
+        # print()
 
     print('yj => ', yj)
     print('bonus => ', bonus)
-    return yj, bonus
+    return bonus
 
 
 yj = [5, 7, 9, 6.382280822883279, 4.816531314926272, 8, 9, 3, 7, 8]

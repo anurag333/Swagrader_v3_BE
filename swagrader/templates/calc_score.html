@@ -1,0 +1,21 @@
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>Wait while calculating scores</h2>
+
+<form style="opacity: 0" method="get" action="/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/calculate-scores">
+        <button class="btn btn-primary" type="submit" id="push_button"></button>
+</form>
+
+<script type="text/javascript">
+        document.getElementById("push_button").click();
+        {% comment %} const request = new XMLHttpRequest();
+        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/calculate-scores", true);
+        request.onload = function () {
+                console.log("statustext", request.statusText);
+                const data = JSON.parse(request.responseText);
+                console.log("data", data);
+                console.log("some prob");
+        };
+        request.send(); {% endcomment %}
+</script>
+{% endblock content %}

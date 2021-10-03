@@ -14,7 +14,10 @@ from rest_framework import status
 import random
 import string
 from datetime import datetime
-from django.utils.timezone import timezone
+from django.utils import timezone
+import json as json_
+from django.contrib import messages
+from django.shortcuts import redirect
 
 
 class EnrollCourseView(views.APIView):
@@ -48,7 +51,7 @@ class QuestionListView(views.APIView):
 
         try:
             assign = course.authored_assignments.get(assign_id=assign_id)
-            if not assign.published_for_subs:
+            if not assign.current_status == "published":
                 return Response({'message': 'Assignment is not yet published, you cannot access the questions unless it is published by the instructor'}, status=status.HTTP_403_FORBIDDEN)
 
             questions = assign.questions.all()
@@ -57,6 +60,7 @@ class QuestionListView(views.APIView):
 
         except Assignment.DoesNotExist:
             return Response({'message': 'Assignment does not exist for this course.'}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 @api_view(['POST', 'GET'])
@@ -70,11 +74,35 @@ def submit_assignment(request, course_id, assign_id):
     if request.user not in curr_course.students.all():
         return Response({'message': 'Only students are allowed to access the  API.'}, status=status.HTTP_403_FORBIDDEN)
 
-    if not curr_assign.published_for_subs or curr_assign.current_status == 'set_outline' or curr_assign.current_status == 'outline_set':
+
+@api_view(['POST', 'GET'])
+def submit_assignment(request, course_id, assign_id):
+    try:
+        curr_course = Course.objects.get(course_id=course_id)
+        curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
+    except Course.DoesNotExist or Assignment.DoesNotExist:
+        raise Http404
+
+    if request.user not in curr_course.students.all():
+        return Response({'message': 'Only students are allowed to access the  API.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if curr_assign.publish_date <= timezone.now():
+        if curr_assign.current_status == 'set_outline' or curr_assign.current_status == 'outline_set':
+            curr_assign.current_status = 'published'
+            curr_assign.published_for_subs = True
+            curr_assign.save()
+
+    last_date = curr_assign.submission_deadline if not curr_assign.allow_late_subs else curr_assign.late_sub_deadline
+    if timezone.now() > last_date:
+        curr_assign.current_status = "subs_closed"
+        curr_assign.save()
+        return Response({'message': 'submission deadline over'})
+
+    if curr_assign.current_status != "published" or curr_assign.current_status == 'set_outline' or curr_assign.current_status == 'outline_set':
         return Response({'message': 'Assignment not avaliable at the moment.'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'POST':
-        if not curr_assign.published_for_subs:
+        if not curr_assign.current_status == "published":
             return Response({'message': 'Assignment is not published for submissions.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -84,14 +112,19 @@ def submit_assignment(request, course_id, assign_id):
             sub = AssignmentSubmission.objects.create(
                 author=request.user, assignment=curr_assign)
 
-        for qid in request.data.keys():
+        print("req.post", request.POST, request.FILES)
+        data = request.FILES
+        print("data", data)
+
+        for qid in data.keys():
+            print("qid", qid)
             if not curr_assign.questions.filter(ques_id=qid).exists():
                 return Response({'message': f'{qid} does not exist for this assignment, bad input.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # payload: 'ques_id': <FILE>
         filename = ''.join(
             [random.choice(string.ascii_letters + string.digits) for n in range(7)])
-        for ques_id in request.data.keys():
+        for ques_id in data.keys():
             print(ques_id)
             try:
                 ques = curr_assign.questions.get(ques_id=ques_id)
@@ -108,10 +141,13 @@ def submit_assignment(request, course_id, assign_id):
                         submission=sub, question=ques, pdf=request.data[ques_id])
             except Question.DoesNotExist:
                 return Response({'message': f'{ques_id} does not exist for this assignment, bad input.'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'success': 'Submitted succesfully'}, status=200)
+        messages.success(
+            request, "Assignment submitted successfully")
+        return redirect(f"/home/{course_id}/assignments/{assign_id}")
 
     elif request.method == 'GET':
-        if not curr_assign.published_for_subs:
+        print("here")
+        if not curr_assign.current_status == "published":
             return Response({'message': 'Assignment is not published for submissions.'}, status=status.HTTP_403_FORBIDDEN)
         questions = curr_assign.questions.all()
         data = {}
