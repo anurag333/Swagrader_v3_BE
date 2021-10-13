@@ -10,7 +10,7 @@ authors:
     given-names: Somu
 cff-version: "1.1.0"
 message: "If you use this software, please cite it using these metadata."
-repository-code: "https://github.com/anurag333/Swagrader_v3_BE"
+url: "https://github.com/anurag333/Swagrader_v3_BE"
 title: Swagrader,An interactive tool for peer-grading
 version: "3"
 ...
