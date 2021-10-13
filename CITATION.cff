@@ -1,0 +1,16 @@
+# YAML 1.2
+---
+abstract: "Massive  open  online  courses(MOOC’s)  face  a  major  challenge  in  terms  of  grading  the  answerscripts.  The most common method to grade answer scripts in MOOC’s is peer-grading, Howeverthat approach is prone to tampering of grades by students with ill intent.  The tool Swagrader isdeveloped which eliminates the problem where students deliberately reduce or increase grades ofother students.  This is achieved by using the TRUPEQA[3] algorithm which penalises graders whoput less effort into grading and incentivises graders who put more effort into grading.  Swagradergives instructors the ability to handle courses with large student strength(offline courses and onlinecourses)  with  ease  via  its  web-based  application.The  application  divides  the  process  of  gradingassignments into several parts thus providing an easy step by step grading process."
+authors: 
+  -
+    family-names: Maithani
+    given-names: Anurag
+  -
+    family-names: Prajapati
+    given-names: Somu
+cff-version: "1.1.0"
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/anurag333/Swagrader_v3_BE"
+title: Swagrader
+version: "v3.1"
+...
