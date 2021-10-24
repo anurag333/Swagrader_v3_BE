@@ -1,0 +1,658 @@
+{
+           "0": {
+                "sno": 2,
+                "title": "second question",
+                "max_marks": 10.0,
+                "min_marks": 0,
+                "sub_questions": [
+                 
+                ]
+            },
+            "1":{
+                "sno": 1,
+                "title": "first question",
+                "max_marks": 10.0,
+                "min_marks": 0,
+                "sub_questions": [
+                    {
+                        "sno": 2,
+                        "title": "second subquestion",
+                        "max_marks": 5.0,
+                        "min_marks": 0
+                    },
+                    {
+                        "sno": 1,
+                        "title": "first subquestion",
+                        "max_marks": 5.0,
+                        "min_marks": 0
+                    }
+                ]
+            }
+        }
+
+
+        {"questions": [{"sno": 2, "title": "second question", "max_marks": 10.0, "min_marks": 0, "sub_questions": []}, {"sno": 1, "title": "first question", "max_marks": 10.0, "min_marks": 0, "sub_questions": [{"sno": 2, "title": "second subquestion", "max_marks": 5.0, "min_marks": 0}, {"sno": 1, "title": "first subquestion", "max_marks": 5.0, "min_marks": 0}]}]}
+
+const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+
+
+
+
+
+
+
+
+{% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm">
+      One of three columns
+    </div>
+    <div class="col-sm">
+      One of three columns
+    </div>
+  </div>
+</div>
+
+
+<div id="question_paper" class="p-5">
+        <p>
+                <button
+                        class="btn btn-secondary"
+                        type="button"
+                        data-toggle="collapse"
+                        data-target="#collapseExample"
+                        aria-expanded="false"
+                        aria-controls="collapseExample"
+                        style="width: 100%"
+                >
+                        See Question Paper
+                </button>
+        </p>
+        <div class="collapse" id="collapseExample">
+                <div class="card card-body">
+                        <div style="width: 100%; height: 600px">
+                                <h3>Assignment Questions:</h3>
+                                <iframe src="{{pdf.url}}" style="width: 90%; height: 90%"></iframe>
+                        </div>
+                </div>
+        </div>
+</div>
+
+<div id="peer_papers" class="list-group bg-light p-5"></div>
+
+<div id="tools" class="card card-body p-3">
+<div id ="alert"></div>
+<h6>Available actions :</h6></br>
+</div>
+
+<script type="text/javascript">
+        alert("{{assign_status}}")
+
+
+        var peersToCheck = function () {
+                console.log("in this page");
+                console.log("/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/peer-papers-to-check");
+                request.onload = () => {
+                        console.log("here also");
+                        const data = JSON.parse(request.responseText);
+                        console.log("messgae loading");
+                        console.log(data);
+                        if ("message" in data) {
+                                return;
+                        }
+                        document.getElementById("peer_papers").innerHTML = "<h4>Peer Papers to check :</h4> </br>";
+                        for (paper in data) {
+                                console.log(paper);
+                                let li = document.createElement("li");
+                                let link = "{{assign_id}}";
+                                link += "/grade_peer";
+                                str = data[paper];
+                                let idx = str.indexOf('"paper":');
+                                idx += 8;
+                                console.log(idx);
+                                console.log(str[idx]);
+                                let strr = str.substring(idx, str.length - 1);
+                                link += "/" + strr;
+                                console.log(link);
+                                li.innerHTML = '<li> <a href= "' + link + '">' + "grade peer paper" + "</a></li>";
+                                document.querySelector("#peer_papers").appendChild(li);
+                        }
+                };
+                const data = new FormData();
+                request.send(data);
+        };
+
+        var probesToCheck = function () {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/probes-to-check");
+                request.onload = () => {
+                        console.log("instructor one");
+                        const data = JSON.parse(request.responseText);
+                        console.log("probes");
+                        console.log(data);
+                        if ("message" in data) {
+                                return;
+                        }
+                        for (paper in data) {
+                                console.log(paper);
+                                let li = document.createElement("li");
+                                let link = "{{assign_id}}";
+                                link += "/grade_probe";
+                                str = data[paper];
+                                link += "/" + str;
+                                console.log(link);
+                                li.innerHTML = '<li> <a href= "' + link + '">' + "grade probe paper" + "</a></li>";
+                                document.querySelector("#peer_papers").appendChild(li);
+                        }
+                };
+                const data = new FormData();
+                request.send(data);
+        };
+
+        var setOutline = function () {
+                let tools = document.getElementById("tools");
+                let setOutlineButton = document.createElement("button");
+                setOutlineButton.classList.add("btn");
+                setOutlineButton.classList.add("btn-primary");
+                setOutlineButton.classList.add("btn-sm");
+                setOutlineButton.innerHTML = "Set Outline";
+                setOutlineButton.type = "button";
+                setOutlineButton.onclick = () => {
+                        window.open(window.location.href + "/outline","_self");
+                };
+                tools.appendChild(setOutlineButton);
+                tools.appendChild(document.createElement("br"));
+        };
+        var publish = function () {
+                let tools = document.getElementById("tools");
+                let publishButton = document.createElement("button");
+                publishButton.classList.add("btn");
+                publishButton.classList.add("btn-primary");
+                publishButton.classList.add("btn-sm");
+                publishButton.innerHTML = "Publish Assignment Now";
+                publishButton.type = "button";
+                publishButton.onclick = () => {
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/publish");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log(data);
+                                if(data.result == "positive"){
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                const syncWait = ms => {
+                                        const end = Date.now() + ms
+                                        while (Date.now() < end) continue;
+                                }
+                                syncWait(3300);
+                                if(data.result == "positive")location.reload();
+                        }
+                        req.send();
+                };
+                tools.appendChild(publishButton);
+                tools.appendChild(document.createElement("br"));
+        };
+        var closeSubmission = function () {
+                let tools = document.getElementById("tools");
+                let closeSubmissionButton = document.createElement("button");
+                closeSubmissionButton.classList.add("btn");
+                closeSubmissionButton.classList.add("btn-primary");
+                closeSubmissionButton.classList.add("btn-sm");
+                closeSubmissionButton.innerHTML = "Close Submissions Now";
+                closeSubmissionButton.type = "button";
+                closeSubmissionButton.onclick = () => {
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/close-submissions");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log(data);
+                                if(data.result == "positive"){
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                const syncWait = ms => {
+                                        const end = Date.now() + ms
+                                        while (Date.now() < end) continue;
+                                }
+                                syncWait(3300);
+                                if(data.result == "positive")location.reload();
+                        }
+                        req.send();
+                };
+                tools.appendChild(closeSubmissionButton);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var selectMethod = function () {
+                let tools = document.getElementById("tools");
+                let chooseGrading = document.createElement("button");
+                chooseGrading.classList.add("btn");
+                chooseGrading.classList.add("btn-primary");
+                chooseGrading.classList.add("btn-sm");
+                chooseGrading.innerHTML = "Choose Grading Method";
+                chooseGrading.type = "button";
+                chooseGrading.onclick = () => {
+                        window.open(window.location.href + "/method-select","_self");
+                };
+                tools.appendChild(chooseGrading);
+                tools.appendChild(document.createElement("br"));
+        }
+        var startGrading = function(){
+                let tools = document.getElementById("tools");
+                let start_grading = document.createElement("button");
+                start_grading.classList.add("btn");
+                start_grading.classList.add("btn-primary");
+                start_grading.classList.add("btn-sm");
+                start_grading.innerHTML = "Distribute Probe Papers";
+                start_grading.type = "button";
+                start_grading.onclick = () => {
+                        const req = new XMLHttpRequest();
+                        req.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/start-grading");
+                        req.onload = () =>{
+                                const data = JSON.parse(req.responseText);
+                                console.log(data);
+                                if(data.result == "positive"){
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-success alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                else{
+                                        document.getElementById("alert").innerHTML =
+                                        '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+data.message+'</div>';
+                                }
+                                const syncWait = ms => {
+                                        const end = Date.now() + ms
+                                        while (Date.now() < end) continue;
+                                }
+                                syncWait(3300);
+                                if(data.result == "positive")location.reload();
+                        }
+                        req.send();
+                };
+                tools.appendChild(start_grading);
+                tools.appendChild(document.createElement("br"));
+        }
+
+        var setRubric = function () {
+                let tools = document.getElementById("tools");
+                let set_rubric = document.createElement("button");
+                set_rubric.classList.add("btn");
+                set_rubric.classList.add("btn-primary");
+                set_rubric.classList.add("btn-sm");
+                set_rubric.innerHTML = "Set Rubrics";
+                set_rubric.type = "button";
+                set_rubric.onclick = () => {
+                        window.open(window.location.href + "/set-rubric","_self");
+                };
+                tools.appendChild(set_rubric);
+                tools.appendChild(document.createElement("br"));
+        }
+
+
+
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log(res);
+                if (res["privilege"] == "student") {
+                        if ("{{assign_status}}" == "published") {
+                                submitAssignment();
+                        } else if ("{{assign_status}}" == "subs_closed") {
+                                waitForGrading();
+                        } else if ("{{assign_status}}" == "grading_ended") {
+                                showMarks();
+                        }
+                }
+                if (res["privilege"] == "instructor") {
+                        if ("{{assign_status}}" == "set_outline" || "{{assign_status}}" == "outline_set") {
+                                setOutline();
+                                publish();
+                        } else if ("{{assign_status}}" == "published") {
+                                setOutline();
+                                closeSubmission();
+                        } else if ("{{assign_status}}" == "subs_closed") {
+                                setOutline();
+                                selectMethod();
+                        } else if ("{{assign_status}}" == "method_selected") {
+                                setOutline();
+                                selectMethod();
+                                setRubric();
+                        }
+                        else if ("{{assign_status}}" == "rubric_set")
+                        {
+                                selectMethod();
+                                startGrading();
+                        }
+                }
+                if (res["privilege"] == "ta") {
+                }
+        };
+        const dat = new FormData();
+        req.send(dat);
+</script>
+{% endblock content %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+probes [<AssignmentSubmission: 848-newTest: 180776 Submission>, <AssignmentSubmission: 850-newTest: 180778 Submission>] peerdist 6
+p_papers 2 [<AssignmentSubmission: 848-newTest: 180776 Submission>, <AssignmentSubmission: 850-newTest: 180778 Submission>]
+np_papers 8 [<AssignmentSubmission: 844-newTest: 180772 Submission>, <AssignmentSubmission: 845-newTest: 180773 Submission>, <AssignmentSubmission: 846-newTest: 180774 Submission>, <AssignmentSubmission: 847-newTest: 180775 Submission>, <AssignmentSubmission: 849-newTest: 180777 Submission>, <AssignmentSubmission: 851-newTest: 180779 Submission>, <AssignmentSubmission: 852-newTest: 180780 Submission>, <AssignmentSubmission: 853-newTest: 180781 Submission>]
+match
+already exists PeerGraders object (1419)
+student-0@iitk.ac.in 845-newTest: 180773 Submission
+already exists PeerGraders object (1420)
+student-0@iitk.ac.in 846-newTest: 180774 Submission
+already exists PeerGraders object (1421)
+student-0@iitk.ac.in 847-newTest: 180775 Submission
+already exists PeerGraders object (1422)
+student-1@iitk.ac.in 846-newTest: 180774 Submission
+already exists PeerGraders object (1423)
+student-1@iitk.ac.in 847-newTest: 180775 Submission
+already exists PeerGraders object (1424)
+student-1@iitk.ac.in 849-newTest: 180777 Submission
+already exists PeerGraders object (1425)
+student-2@iitk.ac.in 847-newTest: 180775 Submission
+already exists PeerGraders object (1426)
+student-2@iitk.ac.in 849-newTest: 180777 Submission
+already exists PeerGraders object (1427)
+student-2@iitk.ac.in 851-newTest: 180779 Submission
+already exists PeerGraders object (1428)
+student-3@iitk.ac.in 849-newTest: 180777 Submission
+already exists PeerGraders object (1429)
+student-3@iitk.ac.in 851-newTest: 180779 Submission
+already exists PeerGraders object (1430)
+student-3@iitk.ac.in 852-newTest: 180780 Submission
+already exists PeerGraders object (1431)
+student-5@iitk.ac.in 851-newTest: 180779 Submission
+already exists PeerGraders object (1432)
+student-5@iitk.ac.in 852-newTest: 180780 Submission
+already exists PeerGraders object (1433)
+student-5@iitk.ac.in 853-newTest: 180781 Submission
+already exists PeerGraders object (1434)
+student-7@iitk.ac.in 852-newTest: 180780 Submission
+already exists PeerGraders object (1435)
+student-7@iitk.ac.in 853-newTest: 180781 Submission
+already exists PeerGraders object (1436)
+student-7@iitk.ac.in 844-newTest: 180772 Submission
+already exists PeerGraders object (1437)
+student-8@iitk.ac.in 853-newTest: 180781 Submission
+already exists PeerGraders object (1438)
+student-8@iitk.ac.in 844-newTest: 180772 Submission
+already exists PeerGraders object (1439)
+student-8@iitk.ac.in 845-newTest: 180773 Submission
+already exists PeerGraders object (1440)
+student-9@iitk.ac.in 844-newTest: 180772 Submission
+already exists PeerGraders object (1441)
+student-9@iitk.ac.in 845-newTest: 180773 Submission
+already exists PeerGraders object (1442)
+student-9@iitk.ac.in 846-newTest: 180774 Submission
+already exists PeerGraders object (1443)
+student-4@iitk.ac.in 844-newTest: 180772 Submission
+already exists PeerGraders object (1444)
+student-4@iitk.ac.in 845-newTest: 180773 Submission
+already exists PeerGraders object (1445)
+student-4@iitk.ac.in 846-newTest: 180774 Submission
+already exists PeerGraders object (1446)
+student-6@iitk.ac.in 847-newTest: 180775 Submission
+already exists PeerGraders object (1447)
+student-6@iitk.ac.in 849-newTest: 180777 Submission
+already exists PeerGraders object (1448)
+student-6@iitk.ac.in 851-newTest: 180779 Submission
+already exists PeerGraders object (1449)
+student-4@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1450)
+student-4@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1449)
+student-4@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1452)
+student-6@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1453)
+student-6@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1452)
+student-6@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1455)
+student-0@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1456)
+student-0@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1455)
+student-0@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1458)
+student-1@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1459)
+student-1@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1458)
+student-1@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1461)
+student-2@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1462)
+student-2@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1461)
+student-2@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1464)
+student-3@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1465)
+student-3@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1464)
+student-3@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1467)
+student-5@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1468)
+student-5@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1467)
+student-5@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1470)
+student-7@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1471)
+student-7@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1470)
+student-7@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1473)
+student-8@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1474)
+student-8@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1473)
+student-8@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1476)
+student-9@iitk.ac.in 850-newTest: 180778 Submission
+already exists PeerGraders object (1477)
+student-9@iitk.ac.in 848-newTest: 180776 Submission
+already exists PeerGraders object (1476)
+student-9@iitk.ac.in 850-newTest: 180778 Submission
+
+
+
+{% comment %} {% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
+
+<h2>home page.</h2>
+<div>
+        <iframe src="{{pdf.url}}" style="width: 100%; height: 700px"></iframe>
+</div>
+{% for sub,id in ques%}
+<div>
+        <iframe src="{{sub.url}}" style="width: 100%; height: 700px"></iframe>
+</div>
+<div id="{{id}}">space for marks ques_ids {{id}}</div>
+<br /><br />
+{%endfor%}
+<div>
+        <button type="submit" id="submit_marks">submit marks</button>
+</div>
+<script type="text/javascript">
+        const req = new XMLHttpRequest();
+        req.open("GET", "/dashboard/courses/{{course_id}}/privilege");
+        req.onload = () => {
+                const res = JSON.parse(req.responseText);
+                console.log("res", res);
+                if (res["privilege"] == "student") {
+                        const request = new XMLHttpRequest();
+                        request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/grade-peer/{{paper_id}}");
+                        console.log("timepass");
+                        var outline_data;
+                        request.onload = () => {
+                                console.log("here also");
+                                const data = JSON.parse(request.responseText);
+                                outline_data = data;
+                                console.log("messgae loading");
+                                console.log(data);
+                                for (let paper in data) {
+                                        console.log(paper);
+                                        ques = data[paper];
+                                        let str = ques["qid"].toString();
+                                        if (ques["rubrics"].length > 0) {
+                                                document.getElementById(str).innerHTML = "Marks : ";
+                                                let select = document.createElement("SELECT");
+                                                select.setAttribute("id", "select" + ques["qid"].toString());
+                                                document.getElementById(str).appendChild(select);
+                                                for (let idx = 0; idx < ques["rubrics"].length; idx++) {
+                                                        let rub = ques["rubrics"][idx];
+                                                        var opt = document.createElement("option");
+                                                        opt.setAttribute("value", rub["rubric_id"]);
+                                                        var nod = document.createTextNode(rub["marks"]);
+                                                        opt.appendChild(nod);
+                                                        document.getElementById("select" + ques["qid"].toString()).appendChild(opt);
+                                                }
+                                        } else {
+                                                document.getElementById(str).innerHTML = "Marks : ";
+                                                for (let subques in ques["sub_questions"]) {
+                                                        sq = ques["sub_questions"][subques];
+                                                        let div = document.createElement("div");
+                                                        div.innerHTML = "sub_questions " + sq["sqid"] + " marks :";
+                                                        let select = document.createElement("SELECT");
+                                                        div.appendChild(select);
+                                                        select.setAttribute("id", "select_sq" + sq["sqid"].toString());
+                                                        document.getElementById(str).appendChild(div);
+                                                        for (let sub_r in sq["sub_rubrics"]) {
+                                                                let sub_rub = sq["sub_rubrics"][sub_r];
+                                                                var opt = document.createElement("option");
+                                                                opt.setAttribute("value", sub_rub["sub_rubric_id"]);
+                                                                var nod = document.createTextNode(sub_rub["marks"]);
+                                                                opt.appendChild(nod);
+                                                                document.getElementById("select_sq" + sq["sqid"].toString()).appendChild(opt);
+                                                        }
+                                                }
+                                        }
+                                }
+                        };
+                        const data = new FormData();
+                        request.send(data);
+
+                        document.getElementById("submit_marks").onclick = function () {
+                                let ret = outline_data;
+                                for (let i = 0; i < outline_data.length; i++) {
+                                        ques = outline_data[i];
+                                        if (ques["sub_questions"].length > 0) {
+                                                for (let idx = 0; idx < ques["sub_questions"].length; idx++) {
+                                                        sq = ques["sub_questions"][idx];
+                                                        let str = "select_sq" + sq["sqid"].toString();
+                                                        let rub_sel = document.getElementById(str).value;
+                                                        console.log(rub_sel);
+                                                        let arr = [];
+                                                        for (let index = 0; index < ret[i]["sub_questions"][idx]["sub_rubrics"].length; index++) {
+                                                                if (ret[i]["sub_questions"][idx]["sub_rubrics"][index]["sub_rubric_id"] == rub_sel) {
+                                                                        arr.push(ret[i]["sub_questions"][idx]["sub_rubrics"][index]);
+                                                                }
+                                                        }
+                                                        console.log("arr", arr);
+                                                        ret[i]["sub_questions"][idx]["sub_rubrics"] = arr;
+                                                }
+                                        } else {
+                                                let str = "select" + ques["qid"].toString();
+                                                let rub_sel = document.getElementById(str).value;
+                                                console.log(rub_sel);
+                                                let arr = [];
+                                                for (let idx = 0; idx < ret[i]["rubrics"].length; idx++) {
+                                                        if (ret[i]["rubrics"][idx]["rubric_id"] == rub_sel) {
+                                                                arr.push(ret[i]["rubrics"][idx]);
+                                                        }
+                                                }
+                                                console.log("arr", arr);
+                                                ret[i]["rubrics"] = arr;
+                                        }
+                                }
+                                console.log("ret", ret);
+                                const request_submit = new XMLHttpRequest();
+                                request_submit.open("POST", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/grade-peer/{{paper_id}}");
+                                request_submit.onload = () => {
+                                        const data_1 = JSON.parse(request_submit.responseText);
+                                        console.log("data_1", data_1);
+                                };
+                                const data_submit = new FormData();
+                                data_submit.append("question", ret);
+                                data_submit["question"] = ret;
+                                console.log("data_submit", data_submit);
+                                request_submit.send(data_submit);
+                        };
+                }
+        };
+        const dat = new FormData();
+        req.send(dat);
+</script>
+{% endblock content %} {% endcomment %} {% endcomment %}
+
+
+
+
+let select = document.createElement("SELECT");
+select.setAttribute("id", "select" + str);
+select.setAttribute("required", "true");
+document.getElementById(str).appendChild(select);
+var opt = document.createElement("option");
+var nod = document.createTextNode("--");
+opt.appendChild(nod);
+document.getElementById("select" + str).appendChild(opt);
+for (let idx = 0; idx < ques["rubrics"].length; idx++) {
+        let rub = ques["rubrics"][idx];
+        var opt = document.createElement("option");
+        opt.setAttribute("value", rub["rubric_id"]);
+        var nod = document.createTextNode(rub["marks"]);
+        opt.appendChild(nod);
+        document.getElementById("select" + str).appendChild(opt);
+}
+
+
+
+let select = document.createElement("SELECT");
+div.appendChild(select);
+select.setAttribute("id", "select_sq" + sq["sqid"].toString());
+select.setAttribute("required", "true");
+document.getElementById(str).appendChild(div);
+var opt = document.createElement("option");
+var nod = document.createTextNode("--");
+opt.appendChild(nod);
+document.getElementById("select_sq" + sq["sqid"].toString()).appendChild(opt);
+for (let sub_r in sq["sub_rubrics"]) {
+        let sub_rub = sq["sub_rubrics"][sub_r];
+        var opt = document.createElement("option");
+        opt.setAttribute("value", sub_rub["sub_rubric_id"]);
+        var nod = document.createTextNode(sub_rub["marks"]);
+        opt.appendChild(nod);
+        document.getElementById("select_sq" + sq["sqid"].toString()).appendChild(opt);
+}

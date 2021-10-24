@@ -528,6 +528,23 @@ def see_grades(request, course_id, assign_id):
     }
     return render(request, 'see_grades.html', context)
 
+@api_view(['GET'])
+def student_marks(request, course_id, assign_id):
+    course = get_object_or_404(Course, course_id=course_id)
+    assign = get_object_or_404(
+        course.authored_assignments.all(), assign_id=assign_id)
+    User = get_user_model()
+
+    if assign.current_status not in ['bonus_calculated', 'regrading_req_start', 'start_regrading', 'grading_ended']:
+        return Response({'message': 'You are not allowed for this operation'}, status=403)
+
+    pg_profile = assign.assignment_peergrading_profile.all()[0]
+
+    context = {
+        'course_id': course_id,
+        'assign_id': assign_id,
+    }
+    return render(request, 'student_marks.html', context)
 
 @api_view(['GET'])
 def test(request):

@@ -62,9 +62,19 @@ class QuestionListView(views.APIView):
             return Response({'message': 'Assignment does not exist for this course.'}, status=status.HTTP_404_NOT_FOUND)
 
 
+# @api_view(['POST', 'GET'])
+# def submit_assignment(request, course_id, assign_id):
+#     try:
+#         curr_course = Course.objects.get(course_id=course_id)
+#         curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
+#     except Course.DoesNotExist or Assignment.DoesNotExist:
+#         raise Http404
 
-@api_view(['POST', 'GET'])
-def submit_assignment(request, course_id, assign_id):
+#     if request.user not in curr_course.students.all():
+#         return Response({'message': 'Only students are allowed to access the  API.'}, status=status.HTTP_403_FORBIDDEN)
+
+@api_view(['GET'])
+def st_marks(request, course_id, assign_id):
     try:
         curr_course = Course.objects.get(course_id=course_id)
         curr_assign = curr_course.authored_assignments.get(assign_id=assign_id)
@@ -73,6 +83,14 @@ def submit_assignment(request, course_id, assign_id):
 
     if request.user not in curr_course.students.all():
         return Response({'message': 'Only students are allowed to access the  API.'}, status=status.HTTP_403_FORBIDDEN)
+    mtis = request.user.get_marks.all()
+    ques_marks = []
+    for mti in mtis:
+        if mti.parent_assign == curr_assign:
+            ques_marks.append({"title": mti.ques.title,  "marks": mti.marks, "bonus": mti.bonus,
+                               "total_marks": mti.total_marks, "ques_id": mti.ques.ques_id})
+
+    return Response({'marks': ques_marks})
 
 
 @api_view(['POST', 'GET'])
