@@ -671,7 +671,7 @@
 
 
         var assignRegraders = function(){
-                console.log("here")
+                console.log("here assignRegraders")
                 const request = new XMLHttpRequest();
                 request.open("GET", "/dashboard/courses/{{course_id}}/assignments/{{assign_id}}/assign-regraders",true);
                 request.onload = function(){
