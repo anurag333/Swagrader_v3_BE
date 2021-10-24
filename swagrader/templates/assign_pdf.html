@@ -606,7 +606,7 @@
                 button.classList.add("btn-primary");
                 button.classList.add("m-1")
                 button.onclick = ()=>{
-                        windows.open(location.href +"/student-marks","_self")
+                        window.open(location.href +"/student-marks","_self")
                 }
                 tools.appendChild(button);
                 tools.appendChild(document.createElement("br"));
@@ -714,6 +714,10 @@
                         }else if ("{{assign_status}}" == "regrading_req_start") {
                                 showMarks();
                                 submitRegradingRequest();
+                                loadStuDetails();
+                        }
+                        else if("{{assign_status}}" == "start_regrading" || "{{assign_status}}" == "grading_ended" ||"{{assign_status}}" == "bonus_calculated"){
+                                showMarks();
                                 loadStuDetails();
                         }
                 }

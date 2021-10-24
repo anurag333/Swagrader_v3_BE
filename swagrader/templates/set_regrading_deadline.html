@@ -1,7 +1,7 @@
 {% extends 'base.html' %} {% load crispy_forms_tags %} {% block content %}
 
 <h2>Set Regrading Deadlines</h2>
-
+<button type="button" class="btn btn-primary" id="assnpage">Go back</button>
 <div id="for_form">
         <div class="list-group border border-info bg-light p-5">
                 <div id="alert"></div>
@@ -65,6 +65,9 @@
                         }
                 };
                 xhr.send(formData);
+        };
+        document.getElementById("btn").onclick = function () {
+                window.open(window.location.href.substring(0, window.location.href.length - 22), "__self");
         };
 </script>
 {% endblock content %}

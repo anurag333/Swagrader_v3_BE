@@ -18,7 +18,7 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     path('dashboard/', include('authentication.urls')),
     path('namespaces/', EmailNamespaceListView.as_view()),
-
+    path('', LoginView.as_view(template_name='login_page.html'), name='login'),
     path('login', LoginView.as_view(template_name='login_page.html'), name='login'),
     path('logout', LogoutView.as_view(
         template_name='logout_page.html'), name='logout'),
@@ -52,6 +52,8 @@ urlpatterns = [
          calc_score, name='calc_score'),
     path('home/<uuid:course_id>/assignments/<int:assign_id>/see-grades',
          see_grades, name='see_grades'),
+    path('home/<uuid:course_id>/assignments/<int:assign_id>/student-marks',
+         student_marks, name='student_marks'),
     path('home/<uuid:course_id>/assignments/<int:assign_id>/select-ta',
          select_ta, name='select_ta'),
     path('home/<uuid:course_id>/assignments/<int:assign_id>/set-regrading-deadline',
