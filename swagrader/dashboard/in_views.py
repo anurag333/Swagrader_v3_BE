@@ -1497,10 +1497,12 @@ def assign_regraders(request, course_id, assign_id):
         return Response({'message': 'regrading request deadlilne not exceeded'}, status=403)
 
     marks_table_instances = Marks.objects.all().filter(regrade=1)
+    marks_table_instances = marks_table_instances.filter(parent_assign=assign)
     ta = assign.assignment_peergrading_profile.all()[0].ta_graders.all()
     ins = assign.assignment_peergrading_profile.all()[
         0].instructor_graders.all()
     print(ta, ins)
+    print(marks_table_instances)
     graders = list(chain(ta, ins))
     g_len = len(graders)
     if request.method == 'GET':
@@ -1509,6 +1511,7 @@ def assign_regraders(request, course_id, assign_id):
                 print("regrader already assigned")
                 return Response({'message': "negative"})
             mti.regrader = graders[cnt % g_len]
+            print(mti, mti.regrader)
             mti.save()
 
         return Response({'message': "positive"})
